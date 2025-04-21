@@ -24,8 +24,8 @@ def generate(model, tokenizer, prompt, max_new_tokens=50):
  """
 
 
-from model.transformer import Transformer
-from model.tokenizer import Tokenizer
+""" from model.transformer import Transformer
+from model.tokenizers import Tokenizer
 import torch
 
 # Load your trained model
@@ -37,7 +37,7 @@ model.eval()
 tokenizer = Tokenizer.from_file("assets/tokenizer.json")
 
 # Chat loop
-print("🧠 LLM is online. Type 'exit' to quit.")
+print("JOI is online. Type 'exit' to quit.")
 while True:
     prompt = input("You: ")
     if prompt.lower() in ["exit", "quit"]: break
@@ -49,4 +49,47 @@ while True:
         output = model.generate(input_ids, max_new_tokens=100)
 
     response = tokenizer.decode(output[0].tolist())
+    print("AI:", response) """
+
+
+# inference/chat.py
+
+import torch
+from model.transformer import Transformer
+from model.tokenizer import Tokenizer  # or from tokenizers import Tokenizer if you're using HuggingFace
+from training.config import config     # make sure this exists and defines all model hyperparameters
+
+# Load the trained model
+model = Transformer(config)
+model.load_state_dict(torch.load("assets/best_model.pt", map_location="cpu"))  # add map_location for CPU compatibility
+model.eval()
+
+# Load the tokenizer
+tokenizer = Tokenizer.from_file("assets/tokenizer.json")
+
+# Generation function (you must define this if it's not in transformer.py or generation.py)
+def generate(model, input_ids, max_new_tokens=50):
+    model.eval()
+    for _ in range(max_new_tokens):
+        with torch.no_grad():
+            logits = model(input_ids)[:, -1, :]  # logits for the last token
+            probs = torch.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            input_ids = torch.cat([input_ids, next_token], dim=1)
+    return input_ids
+
+# Chat loop
+print("🧠 LLM is online. Type 'exit' to quit.")
+while True:
+    prompt = input("You: ")
+    if prompt.lower() in ["exit", "quit"]:
+        break
+
+    input_ids = tokenizer.encode(prompt).ids
+    input_ids = torch.tensor([input_ids], dtype=torch.long)
+
+    output_ids = generate(model, input_ids, max_new_tokens=50)
+    response = tokenizer.decode(output_ids[0].tolist())
+
     print("AI:", response)
+
