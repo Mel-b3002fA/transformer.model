@@ -317,3 +317,32 @@ class GPT(nn.Module):
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
+    from typing import TYPE_CHECKING
+    from __future__ import annotations
+
+
+if TYPE_CHECKING:
+    from your_model_module import GPTConfig  # or wherever it's defined
+
+class GPT(nn.Module):
+    config: GPTConfig  # <- tells the type checker what `self.config` is
+
+    def get_num_params(self) -> int:
+        ...
+
+
+def estimate_mfu(self: "GPT", fwdbwd_per_iter, dt):
+
+    # first estimate the number of flops we do per iteration.
+    # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
+    N = float(self.get_num_params())
+    cfg = self.config
+    L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_embd // cfg.n_head, cfg.block_size
+    flops_per_token = 6 * N + 12 * L * H * Q * T
+    flops_per_fwdbwd = flops_per_token * T
+    flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
+    flops_achieved = flops_per_iter * (1.0 / dt)  # per second
+    flops_promised = 312e12  # A100 GPU bfloat16 peak flops is 312 TFLOPS
+    mfu = flops_achieved / flops_promised
+    return mfu
+
