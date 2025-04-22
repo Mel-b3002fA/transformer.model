@@ -322,7 +322,8 @@ class GPT(nn.Module):
 
 
 if TYPE_CHECKING:
-    from your_model_module import GPTConfig  # or wherever it's defined
+    GPTConfig: type  # optional type hinting help, can even omit this line entirely
+
 
 class GPT(nn.Module):
     config: GPTConfig  # <- tells the type checker what `self.config` is
