@@ -9,3 +9,12 @@ config = GPTConfig(
 )
 
 model = GPT(config)
+import torch
+
+# Batch of 4 sequences, each 64 tokens long
+x = torch.randint(0, config.vocab_size, (4, config.block_size))
+
+# Forward pass
+out = model(x)
+
+print("Output shape:", out.shape)
