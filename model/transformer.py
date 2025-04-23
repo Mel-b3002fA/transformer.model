@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import math
 import inspect
 from dataclasses import dataclass
@@ -318,32 +319,32 @@ class GPT(nn.Module):
 
         return idx
     from typing import TYPE_CHECKING
-    from __future__ import annotations
 
 
-if TYPE_CHECKING:
-    GPTConfig: type  # optional type hinting help, can even omit this line entirely
 
 class GPT(nn.Module):
-    config: GPTConfig
+    def __init__(self, config: GPTConfig):
+        super().__init__()
+        self.config = config
+        
+        # Define your model layers here
+        self.embedding = nn.Embedding(config.vocab_size, config.n_embd)
+        self.layers = nn.ModuleList([
+            nn.TransformerEncoderLayer(d_model=config.n_embd, nhead=config.n_head) for _ in range(config.n_layer)
+        ])
+        self.fc_out = nn.Linear(config.n_embd, config.vocab_size)
+
+    def forward(self, x):
+        x = self.embedding(x)
+        for layer in self.layers:
+            x = layer(x)
+        return self.fc_out(x)
 
     def get_num_params(self) -> int:
-        # implement this if needed or leave empty
-        pass
+        return sum(p.numel() for p in self.parameters())
 
-    def estimate_mfu(self, fwdbwd_per_iter, dt):
-        # first estimate the number of flops we do per iteration.
-        # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
-        N = float(self.get_num_params())
-        cfg = self.config
-        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_embd // cfg.n_head, cfg.block_size
-        flops_per_token = 6 * N + 12 * L * H * Q * T
-        flops_per_fwd_bwd = flops_per_token * T
-        flops_per_iter = flops_per_fwd_bwd * fwdbwd_per_iter
-        flops_achieved = flops_per_iter * (1.0 / dt)
-        flops_promised = 312e12
-        mfu = flops_achieved / flops_promised
-        return mfu
+
+
 
 
 
