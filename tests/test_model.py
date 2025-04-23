@@ -23,8 +23,7 @@ print("Output shape:", out.shape) """
 
 import torch
 from model.transformer import GPT, GPTConfig
-from toy_data import toy_data
-
+from data.toy_data.toy_data import toy_data 
 
 config = GPTConfig(
     vocab_size=10,
