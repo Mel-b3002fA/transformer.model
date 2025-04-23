@@ -324,26 +324,26 @@ class GPT(nn.Module):
 if TYPE_CHECKING:
     GPTConfig: type  # optional type hinting help, can even omit this line entirely
 
-
 class GPT(nn.Module):
-    config: GPTConfig  # <- tells the type checker what `self.config` is
+    config: GPTConfig
 
     def get_num_params(self) -> int:
-        ...
+        # implement this if needed or leave empty
+        pass
+
+    def estimate_mfu(self, fwdbwd_per_iter, dt):
+        # first estimate the number of flops we do per iteration.
+        # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
+        N = float(self.get_num_params())
+        cfg = self.config
+        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_embd // cfg.n_head, cfg.block_size
+        flops_per_token = 6 * N + 12 * L * H * Q * T
+        flops_per_fwd_bwd = flops_per_token * T
+        flops_per_iter = flops_per_fwd_bwd * fwdbwd_per_iter
+        flops_achieved = flops_per_iter * (1.0 / dt)
+        flops_promised = 312e12
+        mfu = flops_achieved / flops_promised
+        return mfu
 
 
-def estimate_mfu(self: "GPT", fwdbwd_per_iter, dt):
-
-    # first estimate the number of flops we do per iteration.
-    # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
-    N = float(self.get_num_params())
-    cfg = self.config
-    L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_embd // cfg.n_head, cfg.block_size
-    flops_per_token = 6 * N + 12 * L * H * Q * T
-    flops_per_fwdbwd = flops_per_token * T
-    flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
-    flops_achieved = flops_per_iter * (1.0 / dt)  # per second
-    flops_promised = 312e12  # A100 GPU bfloat16 peak flops is 312 TFLOPS
-    mfu = flops_achieved / flops_promised
-    return mfu
 
