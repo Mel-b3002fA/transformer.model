@@ -322,23 +322,63 @@ class GPT(nn.Module):
 
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 class GPT(nn.Module):
-    def __init__(self, config: GPTConfig):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        
-        # Define your model layers here
+
+        # Token embedding layer
         self.embedding = nn.Embedding(config.vocab_size, config.n_embd)
+
+        # Transformer encoder layers
         self.layers = nn.ModuleList([
-            nn.TransformerEncoderLayer(d_model=config.n_embd, nhead=config.n_head) for _ in range(config.n_layer)
+            nn.TransformerEncoderLayer(
+                d_model=config.n_embd,
+                nhead=config.n_head,
+                dim_feedforward=config.n_embd * 4,  # You can customize this if needed
+                dropout=0.1,
+                activation="relu",
+                batch_first=True  # To keep shape as (batch, seq, feature)
+            )
+            for _ in range(config.n_layer)
         ])
+
+        # Final output layer
         self.fc_out = nn.Linear(config.n_embd, config.vocab_size)
 
     def forward(self, x, y=None):
         x = self.embedding(x)
         for layer in self.layers:
             x = layer(x)
-        return self.fc_out(x)
+        logits = self.fc_out(x)
+
+        loss = None
+        if y is not None:
+            loss_fn = nn.CrossEntropyLoss()
+            loss = loss_fn(logits.view(-1, logits.size(-1)), y.view(-1))
+
+        return logits, loss
+
+
+    import torch.nn as nn
+def forward(self, x, y=None):
+    x = self.embedding(x)
+    for layer in self.layers:
+        x = layer(x)
+    logits = self.fc_out(x)
+
+    loss = None
+    if y is not None:
+        loss_fn = nn.CrossEntropyLoss()
+        # Flatten logits and targets for loss computation
+        loss = loss_fn(logits.view(-1, logits.size(-1)), y.view(-1))
+
+    return logits, loss
+
 
     def get_num_params(self) -> int:
         return sum(p.numel() for p in self.parameters())
