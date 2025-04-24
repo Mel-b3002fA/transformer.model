@@ -334,7 +334,7 @@ class GPT(nn.Module):
         ])
         self.fc_out = nn.Linear(config.n_embd, config.vocab_size)
 
-    def forward(self, x):
+    def forward(self, x, y=None):
         x = self.embedding(x)
         for layer in self.layers:
             x = layer(x)
