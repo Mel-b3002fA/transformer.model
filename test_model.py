@@ -232,6 +232,9 @@ from model.transformer import GPT, GPTConfig
 
 # Step 1: Load the WMT 2014 dataset
 dataset = load_dataset("wmt14", "de-en")
+for example in dataset['train']:
+    print(example)  # This will print each example in the train set
+    input_text = example["en"] 
 train_data = dataset["train"]
 valid_data = dataset["validation"]
 test_data = dataset["test"]
