@@ -212,7 +212,7 @@ def evaluate_model(model, config, use_toy=True):
     model.eval()
     with torch.no_grad():
         if use_toy:
-            test_input = torch.tensor(toy_data[0][:-1]).unsqueeze(0).to(DEVICE)
+            test_input = torch.tensor(toy_data()[0][:-1]).unsqueeze(0).to(DEVICE)
         else:
             test_input = torch.randint(0, config.vocab_size, (1, config.block_size)).to(DEVICE)
 
