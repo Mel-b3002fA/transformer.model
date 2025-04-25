@@ -267,7 +267,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 losses = []
 
 # Training loop
-for step in range(100):
+for step in range(700):
     model.train()
     optimizer.zero_grad()
 
