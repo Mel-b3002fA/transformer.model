@@ -74,19 +74,7 @@ for step in range(100):
         print(f"Step {step}, Loss: {total_loss:.4f}")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+"""  """
 
 
 import torch
