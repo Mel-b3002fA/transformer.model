@@ -161,52 +161,55 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 
 from model.transformer import GPT, GPTConfig
-from data.toy_data.toy_data import toy_data  # You can comment this out if using real data
+from data.toy_data.toy_data import toy_data  # Comment if using real data
 
-# === Config ===
-USE_TOY_DATA = True  # Set to False if switching to real dataset (e.g., WMT)
+# === Settings ===
+USE_TOY_DATA = True  # Toggle between toy data and random data
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if USE_TOY_DATA:
-    config = GPTConfig(
-        vocab_size=10,
-        block_size=4,
-        n_layer=2,
-        n_head=2,
-        n_embd=64
-    )
-else:
-    config = GPTConfig(
-        vocab_size=1000,
-        block_size=16,
-        n_layer=4,
-        n_head=4,
-        n_embd=64
-    )
 
-# === Model ===
-model = GPT(config).to(DEVICE)
-optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-losses = []
-
-# === Training ===
-for step in range(100):
-    model.train()
-    total_loss = 0.0
-
-    if USE_TOY_DATA:
-        for seq in toy_data:
-            x = torch.tensor(seq[:-1]).unsqueeze(0).to(DEVICE)  # [1, block_size]
-            y = torch.tensor(seq[1:]).unsqueeze(0).to(DEVICE)
-
-            logits, loss = model(x, y)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-
+# === Model Configuration ===
+def create_config(use_toy=True):
+    if use_toy:
+        return GPTConfig(
+            vocab_size=10,
+            block_size=4,
+            n_layer=2,
+            n_head=2,
+            n_embd=64
+        )
     else:
-        batch_size = 8
-        seq_len = config.block_size
-        x = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
-        y = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
+        return GPTConfig(
+            vocab_size=1000,
+            block_size=16,
+            n_layer=4,
+            n_head=4,
+            n_embd=64
+        )
+
+
+# === Training Function ===
+def train_model(model, optimizer, config, use_toy=True, steps=100):
+    model.train()
+    all_losses = []
+
+    for step in range(steps):
+        total_loss = 0.0
+
+        if use_toy:
+            for seq in toy_data:
+                x = torch.tensor(seq[:-1]).unsqueeze(0).to(DEVICE)
+                y = torch.tensor(seq[1:]).unsqueeze(0).to(DEVICE)
+
+                logits, loss = model(x, y)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+        else:
+            batch_size = 8
+            seq_len = config.block_size
+            x = torch
+
+if __name__ == "__main__":
+    main()
