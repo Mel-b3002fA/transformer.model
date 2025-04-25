@@ -211,5 +211,18 @@ def train_model(model, optimizer, config, use_toy=True, steps=100):
             seq_len = config.block_size
             x = torch
 
+# Your imports, config functions, training, evaluation, plotting go here...
+
+def main():
+    config = create_config(USE_TOY_DATA)
+    model = GPT(config).to(DEVICE)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+    losses = train_model(model, optimizer, config, use_toy=USE_TOY_DATA)
+    evaluate_model(model, config, use_toy=USE_TOY_DATA)
+    plot_losses(losses)
+
+
 if __name__ == "__main__":
     main()
+
