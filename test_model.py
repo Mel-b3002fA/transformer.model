@@ -74,7 +74,7 @@ for step in range(100):
         print(f"Step {step}, Loss: {total_loss:.4f}")
 
 
-"""  """
+""" """
 
 
 import torch
@@ -144,19 +144,16 @@ with torch.no_grad():
 
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
 from model.transformer import GPT, GPTConfig
-from data.toy_data.toy_data import toy_data  # Comment if using real data
+from data.toy_data.toy_data import toy_data
 
-# === Settings ===
-USE_TOY_DATA = True  # Toggle between toy data and random data
+USE_TOY_DATA = True
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# === Model Configuration ===
 def create_config(use_toy=True):
     if use_toy:
         return GPTConfig(
@@ -176,7 +173,6 @@ def create_config(use_toy=True):
         )
 
 
-# === Training Function ===
 def train_model(model, optimizer, config, use_toy=True, steps=100):
     model.train()
     all_losses = []
@@ -197,20 +193,54 @@ def train_model(model, optimizer, config, use_toy=True, steps=100):
         else:
             batch_size = 8
             seq_len = config.block_size
-            x = torch
+            x = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
+            y = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
 
-# Your imports, config functions, training, evaluation, plotting go here...
+            logits, loss = model(x, y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss = loss.item()
+
+        all_losses.append(total_loss)
+        if step % 10 == 0:
+            print(f"Step {step}, Loss: {total_loss:.4f}")
+    return all_losses
+
+
+def evaluate_model(model, config, use_toy=True):
+    model.eval()
+    with torch.no_grad():
+        if use_toy:
+            test_input = torch.tensor(toy_data[0][:-1]).unsqueeze(0).to(DEVICE)
+        else:
+            test_input = torch.randint(0, config.vocab_size, (1, config.block_size)).to(DEVICE)
+
+        logits, _ = model(test_input)
+        prediction = torch.argmax(logits, dim=-1)
+
+        print("\nSample Prediction:")
+        print("Input:     ", test_input[0].tolist())
+        print("Predicted: ", prediction[0].tolist())
+
+
+def plot_losses(losses):
+    plt.plot(losses)
+    plt.xlabel("Step")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Time")
+    plt.grid(True)
+    plt.savefig("loss_curve.png")
+
 
 def main():
     config = create_config(USE_TOY_DATA)
     model = GPT(config).to(DEVICE)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
 
     losses = train_model(model, optimizer, config, use_toy=USE_TOY_DATA)
     evaluate_model(model, config, use_toy=USE_TOY_DATA)
     plot_losses(losses)
 
-
 if __name__ == "__main__":
     main()
-
