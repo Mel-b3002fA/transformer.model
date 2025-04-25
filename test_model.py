@@ -62,6 +62,14 @@ for step in range(100):
 
 
 
+
+
+
+
+
+
+
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -69,7 +77,7 @@ import matplotlib.pyplot as plt
 
 from model.transformer import GPT, GPTConfig
 
-# Configuration
+
 config = GPTConfig(
     vocab_size=1000,
     n_embd=64,
@@ -81,7 +89,7 @@ model = GPT(config)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# Dummy training data
+
 batch_size = 8
 seq_len = 16
 x = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(device)
@@ -89,7 +97,7 @@ y = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
-# Training loop
+
 losses = []
 
 for step in range(100):
@@ -105,18 +113,18 @@ for step in range(100):
     if step % 10 == 0:
         print(f"Step {step}, Loss: {loss.item():.4f}")
 
-# Plot loss
+
 plt.plot(losses)
 plt.xlabel("Step")
 plt.ylabel("Loss")
 plt.title("Training Loss Over Time")
 plt.grid(True)
-plt.savefig("loss_curve.png")  # or plt.show() if running locally
+plt.savefig("loss_curve.png")  
 
-# Evaluation / Generation (optional)
+
 model.eval()
 with torch.no_grad():
-    test_input = x[0].unsqueeze(0)  # one sample
+    test_input = x[0].unsqueeze(0) 
     logits, _ = model(test_input)
     prediction = torch.argmax(logits, dim=-1)
 
