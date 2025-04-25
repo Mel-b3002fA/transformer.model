@@ -233,10 +233,11 @@ from model.transformer import GPT, GPTConfig
 # Step 1: Load the WMT 2014 dataset
 # Step 1: Load the WMT 2014 dataset
 dataset = load_dataset("wmt14", "de-en")
-for example in dataset['train']:
-    print(example)  # This will print each example in the train set
-    input_text = example["translation"]["en"]  # English side
-    target_text = example["translation"]["de"]  # German side
+    # Only process the first 10 examples for testing purposes
+for example in dataset['train'][:10]:  # Limit to first 10 examples
+    print(example)
+    input_text = example["translation"]["en"]
+    target_text = example["translation"]["de"]
 train_data = dataset["train"]
 valid_data = dataset["validation"]
 test_data = dataset["test"]
@@ -270,7 +271,7 @@ for step in range(100):
     model.train()
     optimizer.zero_grad()
 
-    # Step 2: Use WMT data (German-English translation) for training
+
     for example in train_data:
         input_text = example["en"]  # English side
         target_text = example["de"]  # German side
