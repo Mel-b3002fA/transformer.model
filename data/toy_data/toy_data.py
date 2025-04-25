@@ -65,3 +65,13 @@ def toy_data():
 
     return df
  """
+
+
+
+from datasets import load_dataset
+
+dataset = load_dataset("wmt14", "de-en")
+
+train_data = dataset["train"]
+valid_data = dataset["validation"]
+test_data = dataset["test"]
