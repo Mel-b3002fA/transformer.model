@@ -181,7 +181,7 @@ def train_model(model, optimizer, config, use_toy=True, steps=100):
         total_loss = 0.0
 
         if use_toy:
-            for seq in toy_data:
+            for seq in toy_data():  
                 x = torch.tensor(seq[:-1]).unsqueeze(0).to(DEVICE)
                 y = torch.tensor(seq[1:]).unsqueeze(0).to(DEVICE)
 
