@@ -21,7 +21,26 @@ print("Output shape:", out.shape) """
 
 
 
-import torch
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+""" import torch
 from model.transformer import GPT, GPTConfig
 from data.toy_data.toy_data import toy_data 
 
@@ -131,3 +150,63 @@ with torch.no_grad():
     print("\nSample Prediction:")
     print("Input:     ", test_input[0].tolist())
     print("Predicted: ", prediction[0].tolist())
+ """
+
+
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+
+from model.transformer import GPT, GPTConfig
+from data.toy_data.toy_data import toy_data  # You can comment this out if using real data
+
+# === Config ===
+USE_TOY_DATA = True  # Set to False if switching to real dataset (e.g., WMT)
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+if USE_TOY_DATA:
+    config = GPTConfig(
+        vocab_size=10,
+        block_size=4,
+        n_layer=2,
+        n_head=2,
+        n_embd=64
+    )
+else:
+    config = GPTConfig(
+        vocab_size=1000,
+        block_size=16,
+        n_layer=4,
+        n_head=4,
+        n_embd=64
+    )
+
+# === Model ===
+model = GPT(config).to(DEVICE)
+optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+losses = []
+
+# === Training ===
+for step in range(100):
+    model.train()
+    total_loss = 0.0
+
+    if USE_TOY_DATA:
+        for seq in toy_data:
+            x = torch.tensor(seq[:-1]).unsqueeze(0).to(DEVICE)  # [1, block_size]
+            y = torch.tensor(seq[1:]).unsqueeze(0).to(DEVICE)
+
+            logits, loss = model(x, y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+
+    else:
+        batch_size = 8
+        seq_len = config.block_size
+        x = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
+        y = torch.randint(0, config.vocab_size, (batch_size, seq_len)).to(DEVICE)
