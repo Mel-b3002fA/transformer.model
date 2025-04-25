@@ -74,7 +74,7 @@ for step in range(100):
         print(f"Step {step}, Loss: {total_loss:.4f}")
 
 
-""" """
+""" 
 
 
 import torch
@@ -138,25 +138,25 @@ with torch.no_grad():
     print("\nSample Prediction:")
     print("Input:     ", test_input[0].tolist())
     print("Predicted: ", prediction[0].tolist())
- """
 
 
 
 
-import torch
+# not working bc of toy data syntax
+""" import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
 from model.transformer import GPT, GPTConfig
-from data.toy_data.toy_data import toy_data  # Comment if using real data
+from data.toy_data.toy_data import toy_data  
 
-# === Settings ===
+
 USE_TOY_DATA = True  # Toggle between toy data and random data
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-# === Model Configuration ===
+
 def create_config(use_toy=True):
     if use_toy:
         return GPTConfig(
@@ -176,7 +176,7 @@ def create_config(use_toy=True):
         )
 
 
-# === Training Function ===
+
 def train_model(model, optimizer, config, use_toy=True, steps=100):
     model.train()
     all_losses = []
@@ -185,7 +185,8 @@ def train_model(model, optimizer, config, use_toy=True, steps=100):
         total_loss = 0.0
 
         if use_toy:
-            for seq in toy_data:
+            for seq in toy_data():
+
                 x = torch.tensor(seq[:-1]).unsqueeze(0).to(DEVICE)
                 y = torch.tensor(seq[1:]).unsqueeze(0).to(DEVICE)
 
@@ -199,7 +200,7 @@ def train_model(model, optimizer, config, use_toy=True, steps=100):
             seq_len = config.block_size
             x = torch
 
-# Your imports, config functions, training, evaluation, plotting go here...
+# imports, config functions, training, evaluation, plotting...
 
 def main():
     config = create_config(USE_TOY_DATA)
@@ -215,3 +216,4 @@ if __name__ == "__main__":
     main() 
 
 
+ """
