@@ -257,8 +257,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 # Optimizer
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-losses = []
+optimizer = optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.1)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10000)
+
+batch_size = 32
+num_steps = 5000  
+
 
 # Training loop
 for step, example in enumerate(train_data):
