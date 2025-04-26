@@ -233,7 +233,7 @@ from model.transformer import GPT, GPTConfig
 dataset = load_dataset("wmt14", "de-en")
 
 # Limit to first 100 examples for quick testing
-train_data = dataset["train"].select(range(100))
+train_data = dataset["train"].select(range(200))
 valid_data = dataset["validation"]
 test_data = dataset["test"]
 
