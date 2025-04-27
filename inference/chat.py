@@ -98,7 +98,7 @@ while True:
 
 
 
-import torch
+""" import torch
 import pickle
 from model import GPT, GPTConfig
 
@@ -164,3 +164,4 @@ while True:
 
     # Add bot response to conversation
     conversation += f" {response}\n"
+ """
