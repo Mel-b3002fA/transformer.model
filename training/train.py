@@ -21,6 +21,8 @@ import time
 import math
 import pickle
 from contextlib import nullcontext
+import matplotlib.pyplot as plt
+from IPython.display import clear_output
 
 import numpy as np
 import torch
@@ -29,9 +31,7 @@ from torch.distributed import init_process_group, destroy_process_group
 
 from model import GPTConfig, GPT
 
-# -----------------------------------------------------------------------------
-# default config values designed to train a gpt2 (124M) on OpenWebText
-# I/O
+
 out_dir = 'out'
 eval_interval = 2000
 log_interval = 1
@@ -254,14 +254,22 @@ raw_model = model.module if ddp else model # unwrap DDP container if needed
 running_mfu = -1.0
 while True:
 
-    # determine and set the learning rate for this iteration
+
     lr = get_lr(iter_num) if decay_lr else learning_rate
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-    # evaluate the loss on train/val sets and write checkpoints
     if iter_num % eval_interval == 0 and master_process:
-        losses = estimate_loss()
+     losses = estimate_loss()
+    print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+    if wandb_log:
+        wandb.log({
+            "iter": iter_num,
+            "train/loss": losses['train'],
+            "val/loss": losses['val'],
+            "lr": lr
+        })
+
         print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
         if wandb_log:
             wandb.log({
