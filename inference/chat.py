@@ -98,8 +98,6 @@ while True:
 
 
 
-# chat.py
-
 import torch
 import pickle
 from model import GPT, GPTConfig
@@ -144,10 +142,25 @@ def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
 
     return decode(idx[0].tolist())
 
+# --- New! --- Conversation history buffer
+conversation = ""
+
 # Chat loop
 while True:
     user_input = input("\nYou: ")
     if user_input.lower() in ['exit', 'quit']:
         break
-    output = generate(model, user_input, max_new_tokens=100)
-    print(f"Bot: {output}")
+
+    # Add user input to conversation
+    conversation += f"You: {user_input}\nBot:"
+
+    # Generate response
+    response = generate(model, conversation, max_new_tokens=100)
+
+    # Cut off the model's text after it finishes its sentence (optional)
+    response = response.split('\nYou:')[0].strip()
+
+    print(f"Bot: {response}")
+
+    # Add bot response to conversation
+    conversation += f" {response}\n"
