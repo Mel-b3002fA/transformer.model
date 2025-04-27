@@ -637,30 +637,5 @@ while iter_num < max_iters:
     iter_num += 1
 
 
-import torch
-
-def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
-    device = next(model.parameters()).device
-    model.eval()
-    
-    # Encode the prompt
-    idx = torch.tensor(encode(prompt), dtype=torch.long, device=device).unsqueeze(0)  # batch dimension
-    
-    # Generate
-    with torch.no_grad():
-        for _ in range(max_new_tokens):
-            idx_cond = idx if idx.size(1) <= model.config.block_size else idx[:, -model.config.block_size:]
-            logits, _ = model(idx_cond)
-            logits = logits[:, -1, :] / temperature
-            if top_k is not None:
-                v, _ = torch.topk(logits, top_k)
-                logits[logits < v[:, [-1]]] = -float('Inf')
-            probs = torch.nn.functional.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-            idx = torch.cat((idx, next_token), dim=1)
-
-    # Decode the generated text
-    return decode(idx[0].tolist())
-
 
 
