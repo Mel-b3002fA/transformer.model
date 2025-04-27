@@ -53,7 +53,7 @@ while True:
 
 
 
-import torch
+""" import torch
 from model.transformer import Transformer
 from tokenizers import Tokenizer  
 tokenizer = Tokenizer.from_file("assets/tokenizer.json")
@@ -94,3 +94,63 @@ while True:
 
     print("JOI:", response)
 
+ """
+
+
+
+
+
+
+import torch
+from model import GPT, GPTConfig
+import pickle
+
+# 1. Load tokenizer (meta.pkl)
+with open('data/openwebtext/meta.pkl', 'rb') as f:
+    meta = pickle.load(f)
+stoi, itos = meta['stoi'], meta['itos']
+
+def encode(s):
+    return [stoi[c] for c in s]
+
+def decode(l):
+    return ''.join([itos[i] for i in l])
+
+# 2. Load model checkpoint
+checkpoint = torch.load('out/ckpt.pt', map_location='cpu')  # or "cuda" if you have GPU
+model_args = checkpoint['model_args']
+
+gptconf = GPTConfig(**model_args)
+model = GPT(gptconf)
+model.load_state_dict(checkpoint['model'])
+model.eval()
+model.to('cuda' if torch.cuda.is_available() else 'cpu')
+
+# 3. Define generation function
+def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
+    device = next(model.parameters()).device
+    model.eval()
+    
+    idx = torch.tensor(encode(prompt), dtype=torch.long, device=device).unsqueeze(0)
+    
+    with torch.no_grad():
+        for _ in range(max_new_tokens):
+            idx_cond = idx if idx.size(1) <= model.config.block_size else idx[:, -model.config.block_size:]
+            logits, _ = model(idx_cond)
+            logits = logits[:, -1, :] / temperature
+            if top_k is not None:
+                v, _ = torch.topk(logits, top_k)
+                logits[logits < v[:, [-1]]] = -float('Inf')
+            probs = torch.nn.functional.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, next_token), dim=1)
+
+    return decode(idx[0].tolist())
+
+# 4. Chat loop
+while True:
+    user_input = input("You: ")
+    if user_input.lower() in ['exit', 'quit']:
+        break
+    output = generate(model, user_input, max_new_tokens=100)
+    print(f"Bot: {output}")
