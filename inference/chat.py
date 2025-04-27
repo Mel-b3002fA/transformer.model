@@ -98,6 +98,15 @@ while True:
 
 
 
+from model import GPT, GPTConfig
+
+checkpoint = torch.load('out/ckpt.pt', map_location='cpu')  # or 'cuda' if you want
+model_args = checkpoint['model_args']
+gptconf = GPTConfig(**model_args)
+model = GPT(gptconf)
+model.load_state_dict(checkpoint['state_dict'])
+model.eval()
+model.to('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 
