@@ -24,11 +24,11 @@ config = {
     "eval_interval": 500,
     "eval_iters": 200,
 
-    # Generation settings
+ 
     "temperature": 1.0,
     "top_k": 50,
 
-    # Save/load
+
     "checkpoint_path": "assets/best_model.pt",
     "tokenizer_path": "assets/tokenizer.json",
 }
