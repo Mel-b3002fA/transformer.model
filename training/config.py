@@ -9,14 +9,14 @@ batch_size = 32
 
 
 config = {
-    # Model architecture
-    "vocab_size": 10000,         # size of your tokenizer vocab
-    "block_size": 128,           # max context length (sequence length)
-    "n_layer": 6,                # number of Transformer blocks
-    "n_head": 8,                 # number of attention heads
-    "n_embd": 512,               # embedding dimension
 
-    # Training settings
+    "vocab_size": 10000,         
+    "block_size": 128,           
+    "n_layer": 6,                
+    "n_head": 8,                 
+    "n_embd": 512,               
+
+ 
     "batch_size": 64,
     "learning_rate": 3e-4,
     "weight_decay": 0.01,
