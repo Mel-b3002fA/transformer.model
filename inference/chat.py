@@ -2,7 +2,7 @@ import torch
 import pickle
 from model import GPT, GPTConfig
 
-# Load tokenizer
+
 with open('data/openwebtext/meta.pkl', 'rb') as f:
     meta = pickle.load(f)
 stoi, itos = meta['stoi'], meta['itos']
@@ -13,7 +13,7 @@ def encode(s):
 def decode(l):
     return ''.join([itos[i] for i in l])
 
-# Load model
+
 checkpoint = torch.load('out/ckpt.pt', map_location='cpu')
 model_args = checkpoint['model_args']
 gptconf = GPTConfig(**model_args)
@@ -22,7 +22,7 @@ model.load_state_dict(checkpoint['model'])
 model.eval()
 model.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Define generate function
+
 def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
     device = next(model.parameters()).device
     model.eval()
@@ -42,10 +42,10 @@ def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
 
     return decode(idx[0].tolist())
 
-# --- Conversation history buffer
+
 conversation = ""
 
-# Chat loop
+
 while True:
     user_input = input("\nYou: ")
     if user_input.lower() in ['exit', 'quit']:
