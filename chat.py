@@ -14,7 +14,6 @@ def encode(s):
 def decode(l):
     return ''.join([itos[i] for i in l])
 
-# Load model
 checkpoint = torch.load('out/ckpt.pt', map_location='cpu')
 model_args = checkpoint['model_args']
 gptconf = GPTConfig(**model_args)
@@ -23,7 +22,6 @@ model.load_state_dict(checkpoint['model'])
 model.eval()
 model.to('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Define generate function
 def generate(model, prompt, max_new_tokens=100, temperature=1.0, top_k=None):
     device = next(model.parameters()).device
     model.eval()
