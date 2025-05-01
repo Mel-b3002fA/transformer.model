@@ -1,4 +1,4 @@
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers
+""" from tokenizers import Tokenizer, models, trainers, pre_tokenizers
 
 tokenizer = Tokenizer(models.BPE())
 tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
@@ -24,4 +24,36 @@ class Tokenizer:
         return self.itos
 
     def get_stoi(self):
-        return self.stoi
+        return self.stoi """
+
+
+
+import pickle
+from model.tokenizer import Tokenizer  # Adjust if your tokenizer file or class is named differently
+
+tokenizer = Tokenizer()
+
+# Try common tokenizer vocab properties
+try:
+    stoi = tokenizer.stoi
+    itos = tokenizer.itos
+    vocab_size = len(stoi)
+except AttributeError:
+    try:
+        stoi = tokenizer.encoder
+        itos = tokenizer.decoder
+        vocab_size = len(stoi)
+    except AttributeError:
+        raise ValueError("Tokenizer must have 'stoi' and 'itos' or 'encoder' and 'decoder'.")
+
+meta = {
+    'vocab_size': vocab_size,
+    'stoi': stoi,
+    'itos': itos
+}
+
+with open('data/openwebtext/meta.pkl', 'wb') as f:
+    pickle.dump(meta, f)
+
+print("✅ meta.pkl successfully written.")
+
