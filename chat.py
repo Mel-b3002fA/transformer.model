@@ -2,7 +2,8 @@ import torch
 import pickle
 from model import GPT, GPTConfig
 
-# Load tokenizer
+
+
 with open('data/openwebtext/meta.pkl', 'rb') as f:
     meta = pickle.load(f)
 stoi, itos = meta['stoi'], meta['itos']
