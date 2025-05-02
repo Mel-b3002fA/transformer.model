@@ -1,6 +1,6 @@
 import torch
 import pickle
-from model.tokenizers import Tokenizer
+from model.tokenizer import Tokenizer
 from model import GPT, GPTConfig
 
 

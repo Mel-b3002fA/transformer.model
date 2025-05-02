@@ -28,8 +28,8 @@ class Tokenizer:
 
 
 
+from model.tokenizer import Tokenizer
 import pickle
-from model.tokenizers import Tokenizer  # Adjust if your tokenizer file or class is named differently
 
 tokenizer = Tokenizer()
 
@@ -56,4 +56,3 @@ with open('data/openwebtext/meta.pkl', 'wb') as f:
     pickle.dump(meta, f)
 
 print("✅ meta.pkl successfully written.")
-
