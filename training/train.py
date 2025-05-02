@@ -250,7 +250,7 @@ while iter_num < max_iters:
 import os
 import torch
 from model import GPT, GPTConfig
-from tokenizer import Tokenizer
+from model.tokenizer import Tokenizer
 import pickle
 
 # === Hyperparameters ===
