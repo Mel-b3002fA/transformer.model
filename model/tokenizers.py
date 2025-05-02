@@ -29,7 +29,7 @@ class Tokenizer:
 
 
 import pickle
-from model.tokenizer import Tokenizer  # Adjust if your tokenizer file or class is named differently
+from model.tokenizers import Tokenizer  # Adjust if your tokenizer file or class is named differently
 
 tokenizer = Tokenizer()
 
