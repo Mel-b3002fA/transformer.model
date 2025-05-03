@@ -320,7 +320,6 @@ class GPT(nn.Module):
 
         self.embedding = nn.Embedding(config.vocab_size, config.n_embd)
 
-        # Transformer encoder layers
         self.layers = nn.ModuleList([
             nn.TransformerEncoderLayer(
                 d_model=config.n_embd,
