@@ -359,7 +359,7 @@ def forward(self, x, y=None):
     loss = None
     if y is not None:
         loss_fn = nn.CrossEntropyLoss()
-        # Flatten logits and targets for loss computation
+ 
         loss = loss_fn(logits.view(-1, logits.size(-1)), y.view(-1))
 
     return logits, loss
