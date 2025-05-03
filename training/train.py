@@ -245,7 +245,10 @@ while iter_num < max_iters:
 
 
 
-# train.py
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import os
 import torch
@@ -305,6 +308,7 @@ for iter in range(max_iters):
     if iter % eval_interval == 0:
         print(f"step {iter}: loss = {loss.item():.4f}")
 
-# === Save Checkpoint ===
-torch.save(model.state_dict(), 'out/ckpt.pt')
-print("✅ Model checkpoint saved as out/ckpt.pt")
+# Save model checkpoint
+os.makedirs("out", exist_ok=True)
+torch.save(model.state_dict(), "out/ckpt.pt")
+print("✅ Model checkpoint saved at out/ckpt.pt")
