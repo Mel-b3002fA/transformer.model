@@ -205,7 +205,7 @@ class GPT(nn.Module):
         config_args['vocab_size'] = 50257 
         config_args['block_size'] = 1024 
         config_args['bias'] = True 
-        # we can override the dropout rate, if desired
+  
         if 'dropout' in override_args:
             print(f"overriding dropout rate to {override_args['dropout']}")
             config_args['dropout'] = override_args['dropout']
