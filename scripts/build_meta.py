@@ -30,8 +30,8 @@ from model.tokenizer import Tokenizer  # adjust if necessary
 tokenizer = Tokenizer()
 meta = {
     'vocab_size': len(tokenizer.vocab),
-    'itos': tokenizer.itos,  # index to string
-    'stoi': tokenizer.stoi,  # string to index
+    'itos': tokenizer.itos,  
+    'stoi': tokenizer.stoi,  
 }
 
 with open('data/openwebtext/meta.pkl', 'wb') as f:
