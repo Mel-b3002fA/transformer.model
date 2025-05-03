@@ -2,7 +2,7 @@ from model.tokenizer import Tokenizer  # or adjust path if needed
 
 tokenizer = Tokenizer()
 
-# Check attributes
+
 print("Has 'stoi'? ", hasattr(tokenizer, 'stoi'))
 print("Has 'itos'? ", hasattr(tokenizer, 'itos'))
 
