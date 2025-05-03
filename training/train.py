@@ -268,7 +268,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 with open('data/input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
-# === Tokenizer ===
+
 tokenizer = Tokenizer()
 tokenizer.train(text)
 vocab_size = tokenizer.vocab_size
