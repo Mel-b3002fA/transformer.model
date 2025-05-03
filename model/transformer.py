@@ -301,7 +301,7 @@ class GPT(nn.Module):
             probs = F.softmax(logits, dim=-1)
 
             idx_next = torch.multinomial(probs, num_samples=1)
-            # append sampled index to the running sequence and continue
+
             idx = torch.cat((idx, idx_next), dim=1)
 
         return idx
@@ -318,7 +318,6 @@ class GPT(nn.Module):
         super().__init__()
         self.config = config
 
-        # Token embedding layer
         self.embedding = nn.Embedding(config.vocab_size, config.n_embd)
 
         # Transformer encoder layers
