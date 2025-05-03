@@ -273,7 +273,7 @@ tokenizer = Tokenizer()
 tokenizer.train(text)
 vocab_size = tokenizer.vocab_size
 
-# === Save tokenizer config ===
+
 os.makedirs('out', exist_ok=True)
 with open('out/meta.pkl', 'wb') as f:
     pickle.dump({'vocab': tokenizer.vocab}, f)
