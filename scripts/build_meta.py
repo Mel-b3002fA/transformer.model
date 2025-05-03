@@ -25,7 +25,7 @@ print("meta.pkl saved to data/meta.pkl")
 
 
 import pickle
-from model.tokenizer import Tokenizer  # adjust if necessary
+from model.tokenizer import Tokenizer  
 
 tokenizer = Tokenizer()
 meta = {
