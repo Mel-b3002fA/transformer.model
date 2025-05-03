@@ -332,7 +332,7 @@ class GPT(nn.Module):
             for _ in range(config.n_layer)
         ])
 
-        # Final output layer
+
         self.fc_out = nn.Linear(config.n_embd, config.vocab_size)
 
     def forward(self, x, y=None):
