@@ -256,7 +256,7 @@ from model import GPT, GPTConfig
 from model.tokenizer import Tokenizer
 import pickle
 
-# === Hyperparameters ===
+
 batch_size = 4
 block_size = 128
 max_iters = 200
@@ -264,7 +264,7 @@ learning_rate = 1e-3
 eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# === Load dataset ===
+
 with open('data/input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
