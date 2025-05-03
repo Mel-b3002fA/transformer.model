@@ -58,8 +58,8 @@ class CausalSelfAttention(nn.Module):
             att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
             att = F.softmax(att, dim=-1)
             att = self.attn_dropout(att)
-            y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-        y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
+            y = att @ v 
+        y = y.transpose(1, 2).contiguous().view(B, T, C) 
 
         # output projection
         y = self.resid_dropout(self.c_proj(y))
