@@ -291,7 +291,7 @@ class GPT(nn.Module):
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
 
             logits, _ = self(idx_cond)
-            # pluck the logits at the final step and scale by desired temperature
+
             logits = logits[:, -1, :] / temperature
             # optionally crop the logits to only the top k options
             if top_k is not None:
