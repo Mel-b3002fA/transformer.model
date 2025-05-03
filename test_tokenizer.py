@@ -6,7 +6,7 @@ tokenizer = Tokenizer()
 print("Has 'stoi'? ", hasattr(tokenizer, 'stoi'))
 print("Has 'itos'? ", hasattr(tokenizer, 'itos'))
 
-# Optional: preview a few entries
+
 if hasattr(tokenizer, 'stoi') and hasattr(tokenizer, 'itos'):
     print("\nFirst few items in 'stoi':")
     for i, (k, v) in enumerate(tokenizer.stoi.items()):
