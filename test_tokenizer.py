@@ -1,4 +1,4 @@
-from model.tokenizer import Tokenizer  # or adjust path if needed
+from model.tokenizer import Tokenizer  
 
 tokenizer = Tokenizer()
 
