@@ -327,7 +327,7 @@ class GPT(nn.Module):
                 dim_feedforward=config.n_embd * 4, 
                 dropout=0.1,
                 activation="relu",
-                batch_first=True  # To keep shape as (batch, seq, feature)
+                batch_first=True  
             )
             for _ in range(config.n_layer)
         ])
