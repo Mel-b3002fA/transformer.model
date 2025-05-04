@@ -282,7 +282,6 @@ with open('out/meta.pkl', 'wb') as f:
     }, f)
 print("✅ meta.pkl successfully saved.")
 
-# === Encode dataset ===
 data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 train_data = data[:int(0.9 * len(data))]
 val_data = data[int(0.9 * len(data)):]
