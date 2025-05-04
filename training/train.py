@@ -295,7 +295,6 @@ def get_batch(split):
     y = torch.stack([data_split[i + 1:i + block_size + 1] for i in ix])
     return x.to(device), y.to(device)
 
-# === Model ===
 model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
