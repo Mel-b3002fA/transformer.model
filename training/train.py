@@ -299,7 +299,6 @@ def get_batch(split):
 model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-# === Training Loop ===
 losses = []
 
 for iter in range(max_iters):
