@@ -265,7 +265,7 @@ eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-with open('data/input.txt', 'r', encoding='utf-8') as f:
+with open('data/joi.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 
@@ -276,7 +276,12 @@ vocab_size = tokenizer.vocab_size
 
 os.makedirs('out', exist_ok=True)
 with open('out/meta.pkl', 'wb') as f:
-    pickle.dump({'vocab': tokenizer.vocab}, f)
+   pickle.dump({
+    'vocab_size': tokenizer.vocab_size,
+    'stoi': tokenizer.stoi,
+    'itos': tokenizer.itos
+}, f)
+
 print("✅ meta.pkl successfully saved.")
 
 # === Encode dataset ===
