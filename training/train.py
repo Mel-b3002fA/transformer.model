@@ -287,7 +287,6 @@ data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 train_data = data[:int(0.9 * len(data))]
 val_data = data[int(0.9 * len(data)):]
 
-# === Batch function ===
 def get_batch(split):
     data_split = train_data if split == 'train' else val_data
     ix = torch.randint(len(data_split) - block_size, (batch_size,))
