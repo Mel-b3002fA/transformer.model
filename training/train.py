@@ -245,7 +245,6 @@ while iter_num < max_iters:
 
 
 
-
 import sys
 import os
 import torch
@@ -317,11 +316,13 @@ for iter in range(max_iters):
         print(f"step {iter}: loss = {loss.item():.4f}")
 
 # === Save Model & Loss ===
+os.makedirs("out", exist_ok=True)
 torch.save(model.state_dict(), "out/ckpt.pt")
 print("✅ Model checkpoint saved at out/ckpt.pt")
 
 with open("out/losses.json", "w") as f:
     json.dump(losses, f)
 print("✅ Losses saved to out/losses.json")
+
 
 
