@@ -263,7 +263,6 @@ learning_rate = 1e-3
 eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# === Load data ===
 with open('data/joi.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
