@@ -6,7 +6,7 @@ output_path = 'data/joi.txt'
 with open(input_path, 'r', encoding='utf-8') as infile, open(output_path, 'w', encoding='utf-8') as outfile:
     for line in infile:
         line = line.strip()
-        if not line or line.startswith("/*"):  # Skip comments and empty lines
+        if not line or line.startswith("/*"):  
             continue
         try:
             obj = json.loads(line)
