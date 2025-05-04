@@ -259,7 +259,7 @@ import pickle
 
 batch_size = 4
 block_size = 128
-max_iters = 200
+max_iters = 400
 learning_rate = 1e-3
 eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
