@@ -18,14 +18,14 @@ class Tokenizer:
 
     def encode(self, text):
         words = re.findall(r'\w+|\S', text)
-        return [self.stoi.get(word, self.vocab_size) for word in words]  # unknowns mapped to vocab_size
+        return [self.stoi.get(word, self.vocab_size) for word in words] 
 
     def decode(self, tokens):
         return ' '.join(self.itos.get(token, '<unk>') for token in tokens)
     
 
     import pickle
-from model.tokenizer import Tokenizer  # adjust if needed
+from model.tokenizer import Tokenizer  
 
 tokenizer = Tokenizer()
 
