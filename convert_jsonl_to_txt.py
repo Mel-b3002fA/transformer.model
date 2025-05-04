@@ -3,16 +3,18 @@ import json
 input_path = 'data/joi.jsonl'
 output_path = 'data/joi.txt'
 
-with open(input_path, 'r', encoding='utf-8') as fin, open(output_path, 'w', encoding='utf-8') as fout:
-    for line in fin:
+with open(input_path, 'r', encoding='utf-8') as infile, open(output_path, 'w', encoding='utf-8') as outfile:
+    for line in infile:
         line = line.strip()
-        if not line:
-            continue  # Skip empty lines
+        if not line or line.startswith("/*"):  # Skip comments and empty lines
+            continue
         try:
             obj = json.loads(line)
-            # Replace 'text' with your actual key
-            text = obj.get("text") or obj.get("dialogue") or ""
-            if text:
-                fout.write(text.strip() + "\n")
+            input_text = obj.get("input")
+            output_text = obj.get("output")
+            if input_text and output_text:
+                outfile.write(f"{input_text.strip()} {output_text.strip()}\n")
         except json.JSONDecodeError:
-            print("Skipping bad line:", line)
+            print(f"⚠️ Skipping malformed line: {line}")
+
+
