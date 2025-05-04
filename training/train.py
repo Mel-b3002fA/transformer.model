@@ -315,7 +315,6 @@ for iter in range(max_iters):
     if iter % eval_interval == 0:
         print(f"step {iter}: loss = {loss.item():.4f}")
 
-# === Save Model & Loss ===
 os.makedirs("out", exist_ok=True)
 torch.save(model.state_dict(), "out/ckpt.pt")
 print("✅ Model checkpoint saved at out/ckpt.pt")
