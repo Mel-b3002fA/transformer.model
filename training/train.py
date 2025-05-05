@@ -63,11 +63,9 @@ def get_batch(split):
     y = torch.stack([data_split[i]["input_ids"].squeeze(0) for i in ix])
     return x.to(device), y.to(device)
 
-# Initialize model
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-# Load checkpoint if it exists
 losses = []
 start_iter = 0
 ckpt_path = "out/ckpt.pt"
@@ -79,7 +77,6 @@ if os.path.exists(ckpt_path):
             losses = json.load(f)
         start_iter = len(losses)
 
-# Training loop
 for iter in range(start_iter, max_iters):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
@@ -93,16 +90,13 @@ for iter in range(start_iter, max_iters):
     if iter % eval_interval == 0:
         print(f"step {iter}: loss = {loss.item():.4f}")
 
-# Save model checkpoint
 torch.save(model.state_dict(), "out/ckpt.pt")
 print("✅ Model checkpoint saved at out/ckpt.pt")
 
-# Save losses
 with open("out/losses.json", "w") as f:
     json.dump(losses, f)
 print("✅ Losses saved to out/losses.json")
 
-# Plot and save loss graph
 plt.plot(losses)
 plt.xlabel('Iterations')
 plt.ylabel('Loss')
