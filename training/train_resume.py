@@ -89,7 +89,7 @@ plt.legend()
 plt.tight_layout()
 
 # Save the plot as a PNG file
-plt.savefig("out/loss_curve.png")
+plt.savefig("out/second_losscurve.png")
 print("✅ Loss curve saved as out/loss_curve.png")
 
 # Optionally, show the plot (this will pop up a window with the graph)
