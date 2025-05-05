@@ -18,24 +18,18 @@ learning_rate = 1e-3
 eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-# Ensure padding token is set
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-# Load the OpenWebText dataset
 dataset = load_dataset("openwebtext", split="train", streaming=True, trust_remote_code=True)
 
-# Tokenization function
 def tokenize(example):
     return tokenizer(example["text"], return_tensors="pt", padding="max_length", truncation=True, max_length=block_size)
 
-# Tokenize on the fly
 tokenized_stream = (tokenize(sample) for sample in dataset)
 
-# Save tokenizer metadata
 os.makedirs('out', exist_ok=True)
 vocab = tokenizer.get_vocab()
 stoi = vocab
@@ -44,7 +38,6 @@ with open('out/meta.pkl', 'wb') as f:
     pickle.dump({'vocab_size': tokenizer.vocab_size, 'stoi': stoi, 'itos': itos}, f)
 print("✅ meta.pkl successfully saved.")
 
-# Create training and validation splits
 train_data = []
 val_data = []
 for idx, tokenized_example in enumerate(tokenized_stream):
@@ -55,11 +48,10 @@ for idx, tokenized_example in enumerate(tokenized_stream):
     if idx >= max_iters:
         break
 
-# Get training/validation batch
 def get_batch(split):
     data_split = train_data if split == 'train' else val_data
     ix = torch.randint(len(data_split), (batch_size,))
-    x = torch.stack([data_split[i]["input_ids"].squeeze(0) for i in ix])  # Fix: squeeze(0) instead of squeeze(1)
+    x = torch.stack([data_split[i]["input_ids"].squeeze(0) for i in ix])  
     y = torch.stack([data_split[i]["input_ids"].squeeze(0) for i in ix])
     return x.to(device), y.to(device)
 
