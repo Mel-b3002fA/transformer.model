@@ -77,7 +77,6 @@ for iter in range(start_epoch, max_iters):
     if iter % eval_interval == 0:
         print(f"step {iter}: loss = {loss.item():.4f}")
 
-# === Save Model & Loss ===
 checkpoint = {
     'epoch': iter,
     'model_state_dict': model.state_dict(),
