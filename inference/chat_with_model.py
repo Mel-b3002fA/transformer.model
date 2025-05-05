@@ -1,10 +1,11 @@
-import torch
-import pickle
-from model import GPT, GPTConfig
-from model.tokenizer import Tokenizer
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from model import GPT, GPTConfig
+from model.tokenizer import Tokenizer
+import torch
+import pickle
 
 # === Config ===
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -17,6 +18,9 @@ with open(meta_path, 'rb') as f:
     meta = pickle.load(f)
 
 tokenizer = Tokenizer()
+# Load tokenizer vocab from meta.pkl
+with open("out/meta.pkl", "rb") as f:
+    meta = pickle.load(f)
 tokenizer.stoi = meta['stoi']
 tokenizer.itos = meta['itos']
 tokenizer.vocab_size = meta['vocab_size']
