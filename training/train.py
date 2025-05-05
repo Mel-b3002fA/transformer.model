@@ -307,7 +307,7 @@ if os.path.exists(ckpt_path):
         start_iter = len(losses)
 
 
-for iter in range(max_iters):
+for iter in range(start_iter, max_iters):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
 
