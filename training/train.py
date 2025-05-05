@@ -293,6 +293,19 @@ model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 losses = []
+start_iter = 0
+losses = []
+
+# Load checkpoint if it exists
+ckpt_path = "out/ckpt.pt"
+if os.path.exists(ckpt_path):
+    model.load_state_dict(torch.load(ckpt_path))
+    print("✅ Resumed from checkpoint.")
+    if os.path.exists("out/losses.json"):
+        with open("out/losses.json", "r") as f:
+            losses = json.load(f)
+        start_iter = len(losses)
+
 
 for iter in range(max_iters):
     xb, yb = get_batch('train')
