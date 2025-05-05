@@ -2,6 +2,9 @@ import torch
 import pickle
 from model import GPT, GPTConfig
 from model.tokenizer import Tokenizer
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # === Config ===
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
