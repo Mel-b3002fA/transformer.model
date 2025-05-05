@@ -10,7 +10,6 @@ from datasets import load_dataset
 from transformers import AutoTokenizer
 from model import GPT, GPTConfig
 
-# Configuration
 batch_size = 4
 block_size = 128
 max_iters = 200
