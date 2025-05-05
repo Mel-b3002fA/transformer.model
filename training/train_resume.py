@@ -3,7 +3,7 @@ import os
 import torch
 import pickle
 import json
-
+import matplotlib.pyplot as plt
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from model import GPT, GPTConfig
@@ -39,7 +39,7 @@ print("✅ meta.pkl successfully saved.")
 # === Encode dataset ===
 data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 train_data = data[:int(0.9 * len(data))]
-val_data = data[int(0.9 * len(data)):] 
+val_data = data[int(0.9 * len(data)):]
 
 # === Batch function ===
 def get_batch(split):
@@ -53,23 +53,10 @@ def get_batch(split):
 model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-# === Resume checkpoint if available ===
-start_iter = 0
-losses = []
-ckpt_path = "out/ckpt.pt"
-loss_path = "out/losses.json"
-
-if os.path.exists(ckpt_path):
-    model.load_state_dict(torch.load(ckpt_path))
-    print("🔁 Loaded model checkpoint.")
-    if os.path.exists(loss_path):
-        with open(loss_path, "r") as f:
-            losses = json.load(f)
-        start_iter = len(losses)
-        print(f"🔁 Resuming from iteration {start_iter}.")
-
 # === Training Loop ===
-for iter in range(start_iter, max_iters):
+losses = []
+
+for iter in range(max_iters):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
 
@@ -82,11 +69,28 @@ for iter in range(start_iter, max_iters):
     if iter % eval_interval == 0:
         print(f"step {iter}: loss = {loss.item():.4f}")
 
-    # Save model and loss every 10 steps
-    if iter % 10 == 0 or iter == max_iters - 1:
-        torch.save(model.state_dict(), ckpt_path)
-        with open(loss_path, "w") as f:
-            json.dump(losses, f)
-        print(f"💾 Checkpoint and loss saved at step {iter}.")
+# === Save Model & Loss ===
+torch.save(model.state_dict(), "out/ckpt.pt")
+print("✅ Model checkpoint saved at out/ckpt.pt")
 
-print("✅ Training complete.")
+# Save losses to file for potential future use
+with open("out/losses.json", "w") as f:
+    json.dump(losses, f)
+print("✅ Losses saved to out/losses.json")
+
+# === Plotting the Loss Curve ===
+plt.figure(figsize=(10, 6))
+plt.plot(losses, label="Training Loss", color="blue", linewidth=2)
+plt.xlabel("Training Iteration")
+plt.ylabel("Loss")
+plt.title("Training Loss Curve")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+# Save the plot as a PNG file
+plt.savefig("out/loss_curve.png")
+print("✅ Loss curve saved as out/loss_curve.png")
+
+# Optionally, show the plot (this will pop up a window with the graph)
+# plt.show()
