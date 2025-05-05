@@ -20,12 +20,11 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 with open('data/joi.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
-# === Tokenizer ===
 tokenizer = Tokenizer()
 tokenizer.train(text)
 vocab_size = tokenizer.vocab_size
 
-# Save metadata
+
 os.makedirs('out', exist_ok=True)
 with open('out/meta.pkl', 'wb') as f:
     pickle.dump({
