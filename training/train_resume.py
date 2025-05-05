@@ -62,7 +62,6 @@ if os.path.exists(checkpoint_path):
 else:
     print("No checkpoint found, starting from scratch.")
 
-# === Training Loop ===
 losses = []
 
 for iter in range(start_epoch, max_iters):
