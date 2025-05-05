@@ -53,10 +53,23 @@ def get_batch(split):
 model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
+# === Checkpoint Handling ===
+checkpoint_path = 'out/ckpt.pt'
+start_epoch = 0  # Default to starting at epoch 0
+
+if os.path.exists(checkpoint_path):
+    print(f"Checkpoint found at {checkpoint_path}, resuming from last saved epoch.")
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1  # Continue from the next epoch after the checkpoint
+else:
+    print("No checkpoint found, starting from scratch.")
+
 # === Training Loop ===
 losses = []
 
-for iter in range(max_iters):
+for iter in range(start_epoch, max_iters):
     xb, yb = get_batch('train')
     logits, loss = model(xb, yb)
 
@@ -70,15 +83,20 @@ for iter in range(max_iters):
         print(f"step {iter}: loss = {loss.item():.4f}")
 
 # === Save Model & Loss ===
-torch.save(model.state_dict(), "out/ckpt.pt")
+checkpoint = {
+    'epoch': iter,
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+}
+torch.save(checkpoint, "out/ckpt.pt")
 print("✅ Model checkpoint saved at out/ckpt.pt")
 
-# Save losses to file for potential future use
+
 with open("out/losses.json", "w") as f:
     json.dump(losses, f)
 print("✅ Losses saved to out/losses.json")
 
-# === Plotting the Loss Curve ===
+
 plt.figure(figsize=(10, 6))
 plt.plot(losses, label="Training Loss", color="blue", linewidth=2)
 plt.xlabel("Training Iteration")
@@ -88,9 +106,6 @@ plt.grid(True)
 plt.legend()
 plt.tight_layout()
 
-# Save the plot as a PNG file
+
 plt.savefig("out/second_losscurve.png")
 print("✅ Loss curve saved as out/loss_curve.png")
-
-# Optionally, show the plot (this will pop up a window with the graph)
-# plt.show()
