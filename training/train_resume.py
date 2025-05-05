@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from model import GPT, GPTConfig
 from model.tokenizer import Tokenizer
 
-# === Config ===
+
 batch_size = 4
 block_size = 128
 max_iters = 200
