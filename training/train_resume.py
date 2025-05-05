@@ -51,7 +51,7 @@ model = GPT(GPTConfig(vocab_size=vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 checkpoint_path = 'out/ckpt.pt'
-start_epoch = 0  # Default to starting at epoch 0
+start_epoch = 0 
 
 if os.path.exists(checkpoint_path):
     print(f"Checkpoint found at {checkpoint_path}, resuming from last saved epoch.")
