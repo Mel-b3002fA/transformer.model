@@ -58,7 +58,7 @@ if os.path.exists(checkpoint_path):
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    start_epoch = checkpoint['epoch'] + 1  # Continue from the next epoch after the checkpoint
+    start_epoch = checkpoint['epoch'] + 1  
 else:
     print("No checkpoint found, starting from scratch.")
 
