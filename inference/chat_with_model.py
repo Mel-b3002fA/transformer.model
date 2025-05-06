@@ -18,9 +18,8 @@ with open(meta_path, 'rb') as f:
     meta = pickle.load(f)
 
 tokenizer = Tokenizer()
+
 # Load tokenizer vocab from meta.pkl
-with open("out/meta.pkl", "rb") as f:
-    meta = pickle.load(f)
 tokenizer.stoi = meta['stoi']
 tokenizer.itos = meta['itos']
 tokenizer.vocab_size = meta['vocab_size']
