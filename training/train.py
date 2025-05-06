@@ -6,13 +6,13 @@ import torch
 import pickle
 import json
 import matplotlib.pyplot as plt
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from transformers import AutoTokenizer
 from model import GPT, GPTConfig
 
 batch_size = 4
 block_size = 128
-max_iters = 200
+max_iters = 1000
 learning_rate = 1e-3
 eval_interval = 50
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -22,7 +22,15 @@ tokenizer = AutoTokenizer.from_pretrained("gpt2")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-dataset = load_dataset("openwebtext", split="train", streaming=True, trust_remote_code=True)
+# Load datasets
+openwebtext = load_dataset("openwebtext", split="train", streaming=True, trust_remote_code=True)
+bookcorpus = load_dataset("bookcorpus", split="train", streaming=True, trust_remote_code=True)
+commoncrawl = load_dataset("c4", "en", split="train", streaming=True, trust_remote_code=True)
+
+
+
+# Concatenate datasets
+dataset = concatenate_datasets([openwebtext, bookcorpus, commoncrawl])
 
 def tokenize(example):
     return tokenizer(example["text"], return_tensors="pt", padding="max_length", truncation=True, max_length=block_size)
@@ -93,5 +101,5 @@ plt.xlabel('Iterations')
 plt.ylabel('Loss')
 plt.title('Training Loss')
 plt.grid(True)
-plt.savefig("out/loss_graph.png")
+plt.savefig("out/bigdata_loss.png")
 plt.show()
