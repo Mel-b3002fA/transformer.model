@@ -48,11 +48,11 @@ def generate(prompt, max_new_tokens=50):
     return output_text
 
 # === Chat loop ===
-print("💬 Type your prompt below (or type 'exit' to quit):")
+print("Type your prompt below (or type 'exit' to quit):")
 while True:
     user_input = input("You: ")
     if user_input.lower() in ['exit', 'quit']:
         break
 
     output = generate(user_input, max_new_tokens=100)
-    print("AI:", output[len(user_input):].strip())  # Show only the response
+    print("JOi:", output[len(user_input):].strip())  # Show only the response
