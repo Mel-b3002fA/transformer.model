@@ -44,7 +44,8 @@ def generate(prompt, max_new_tokens=50):
             model_input = torch.cat((model_input, next_token), dim=1)
 
     output_text = tokenizer.decode(model_input[0].tolist())
-    return output_text
+    cleaned_output = output_text.replace("Ġ", " ").strip()
+    return cleaned_output
 
 # === Chat loop ===
 print("Type your prompt below (or type 'exit' to quit):")
@@ -54,4 +55,4 @@ while True:
         break
 
     output = generate(user_input, max_new_tokens=100)
-    print("JOi:", output[len(user_input):].strip())  # Show only the response
+    print("JOi:", output[len(user_input):].strip())
