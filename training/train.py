@@ -25,7 +25,7 @@ if tokenizer.pad_token is None:
 # Load datasets
 openwebtext = load_dataset("openwebtext", split="train", streaming=True, trust_remote_code=True)
 bookcorpus = load_dataset("bookcorpus", split="train", streaming=True, trust_remote_code=True)
-commoncrawl = load_dataset("c4", "en", split="train", streaming=True, trust_remote_code=True)
+commoncrawl = load_dataset("allenai/c4", "en", split="train", streaming=True, trust_remote_code=True)
 
 
 
