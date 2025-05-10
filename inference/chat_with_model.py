@@ -118,7 +118,7 @@ def generate(prompt, max_new_tokens=50, temperature=1.0, top_k=0, top_p=1.0,
     response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
     return response
 
-# Interactive loop
+
 try:
     while True:
         prompt = input("You: ")
