@@ -113,26 +113,25 @@ for iter in range(start_iter, max_iters):
         decoded = tokenizer.decode(sample_ids, skip_special_tokens=True)
         print("🧠 Sample:", decoded.strip().replace("Ġ", ""))
 
-        # Save checkpoint
         torch.save(model.state_dict(), ckpt_path)
-        print(f"📦 Overwrote checkpoint at {ckpt_path}")
+        print(f"Overwrote checkpoint at {ckpt_path}")
 
-        # Save best model
+
         if val_loss.item() < best_val_loss:
             best_val_loss = val_loss.item()
             torch.save(model.state_dict(), "out/best_model.pt")
             print("🌟 Best model saved at out/best_model.pt")
 
-# Final checkpoint saving
+
 torch.save(model.state_dict(), ckpt_path)
 print("✅ Final model checkpoint saved at", ckpt_path)
 
-# Save loss history
+
 with open("out/losses.json", "w") as f:
     json.dump(losses, f)
 print("✅ Losses saved to out/losses.json")
 
-# Plot loss graph
+
 plt.plot(losses)
 plt.xlabel('Iterations')
 plt.ylabel('Loss')
