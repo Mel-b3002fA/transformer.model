@@ -57,13 +57,13 @@ for idx, example in enumerate(dataset):
     if idx + 1 >= max_samples:
         break
 
-# Split data into training and validation sets
+
 split_idx = int(0.9 * len(tokenized_data))
 train_data = tokenized_data[:split_idx]
 val_data = tokenized_data[split_idx:]
 print(f"✅ Loaded {len(train_data)} training and {len(val_data)} validation samples.")
 
-# Get batch function
+
 def get_batch(split):
     data_split = train_data if split == 'train' else val_data
     ix = torch.randint(len(data_split), (batch_size,))
@@ -71,7 +71,7 @@ def get_batch(split):
     y = x.clone()
     return x.to(device), y.to(device)
 
-# === Model Initialization ===
+
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
@@ -80,7 +80,7 @@ start_iter = 0
 best_val_loss = float('inf')
 ckpt_path = "out/ckpt.pt"
 
-# Load checkpoint if available
+
 if os.path.exists(ckpt_path):
     model.load_state_dict(torch.load(ckpt_path))
     print("✅ Resumed from checkpoint.")
@@ -89,7 +89,7 @@ if os.path.exists(ckpt_path):
             losses = json.load(f)
         start_iter = len(losses)
 
-# Training loop
+
 for iter in range(start_iter, max_iters):
     model.train()
     xb, yb = get_batch('train')
