@@ -27,12 +27,12 @@ vocab = tokenizer.get_vocab()
 stoi = vocab
 itos = {idx: token for token, idx in stoi.items()}
 
-# Save metadata to 'meta.pkl'
+
 with open('out/meta.pkl', 'wb') as f:
     pickle.dump({'vocab_size': tokenizer.vocab_size, 'stoi': stoi, 'itos': itos}, f)
 print("✅ meta.pkl successfully saved.")
 
-# Load datasets
+
 openwebtext = load_dataset("openwebtext", split="train", streaming=True, trust_remote_code=True)
 bookcorpus = load_dataset("bookcorpus", split="train", streaming=True, trust_remote_code=True)
 commoncrawl = load_dataset("allenai/c4", "en", split="train", streaming=True, trust_remote_code=True)
