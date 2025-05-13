@@ -99,7 +99,6 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
             # 1. Temperature
             logits = logits / temperature
 
-            # 2. Repetition penalty
             for token in set(recent_tokens):
                 logits[0, token] /= repetition_penalty_factor
 
