@@ -96,7 +96,7 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
             logits, _ = model(input_crop)
             logits = logits[:, -1, :]  # Only the last token's logits
 
-            # 1. Temperature
+
             logits = logits / temperature
 
             for token in set(recent_tokens):
