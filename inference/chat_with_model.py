@@ -31,7 +31,6 @@ model.load_state_dict(torch.load(checkpoint_path, map_location=device), strict=F
 model.eval()
 print("✅ Model loaded and ready for chat.")
 
-# Sampling control
 
 def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float('Inf')):
     logits = logits.clone()
