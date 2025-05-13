@@ -25,7 +25,6 @@ if tokenizer.pad_token is None:
 # Validate vocab match
 assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
 
-# Initialize and load model
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
 model.load_state_dict(torch.load(checkpoint_path, map_location=device), strict=False)
 model.eval()
