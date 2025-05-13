@@ -17,7 +17,6 @@ learning_rate = 1e-3
 eval_interval = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Load GPT-2 tokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
@@ -38,7 +37,6 @@ bookcorpus = load_dataset("bookcorpus", split="train", streaming=True, trust_rem
 commoncrawl = load_dataset("allenai/c4", "en", split="train", streaming=True, trust_remote_code=True)
 dataset = concatenate_datasets([openwebtext, bookcorpus, commoncrawl])
 
-# Tokenize the text data
 def tokenize_text(example):
     ids = tokenizer.encode(example['text'], truncation=True, max_length=block_size)
     if len(ids) < block_size:
