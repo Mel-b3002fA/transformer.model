@@ -103,7 +103,6 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
             for token in set(recent_tokens):
                 logits[0, token] /= repetition_penalty_factor
 
-            # 3. No-repeat n-gram filtering
             if no_repeat_ngram_size > 0 and len(recent_tokens) >= no_repeat_ngram_size:
                 ngram = tuple(recent_tokens[-(no_repeat_ngram_size - 1):])
                 for i in range(len(recent_tokens) - no_repeat_ngram_size + 1):
@@ -112,14 +111,11 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
                         banned_token = recent_tokens[i + no_repeat_ngram_size - 1]
                         logits[0, banned_token] = -float("Inf")
 
-            # 4. Top-k and top-p filtering
             logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
 
-            # 5. Softmax and sampling
             probs = torch.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
 
-            # 6. Append to input
             model_input = torch.cat([model_input, next_token], dim=1)
             recent_tokens.append(next_token.item())
 
