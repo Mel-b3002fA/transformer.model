@@ -84,39 +84,48 @@ def no_repeat_ngram_filtering(logits, model_input, no_repeat_ngram_size=0):
             logits[0, token] = -float('Inf')
     return logits
 
-def generate(prompt, max_new_tokens=50, temperature=1.0, top_k=0, top_p=1.0,
-             repetition_penalty_factor=1.0, no_repeat_ngram_size=0):
+def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
+             repetition_penalty_factor=1.2, no_repeat_ngram_size=3):
     temperature = max(temperature, 1e-5)
-    model_input = torch.tensor(tokenizer.encode(prompt), dtype=torch.long)[None, :].to(device)
-    past_tokens = set(model_input[0].tolist())
+    model_input = tokenizer(prompt, return_tensors='pt').input_ids.to(device)
+    recent_tokens = model_input[0].tolist()
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
             input_crop = model_input[:, -block_size:]
             logits, _ = model(input_crop)
-            logits = logits[:, -1, :]
+            logits = logits[:, -1, :]  # Only the last token's logits
 
-            if torch.isnan(logits).any() or torch.isinf(logits).any():
-                print("Invalid logits before filtering.")
-                return ""
-
+            # 1. Temperature
             logits = logits / temperature
-            logits = torch.clamp(logits, min=-500, max=500)
+
+            # 2. Repetition penalty
+            for token in set(recent_tokens):
+                logits[0, token] /= repetition_penalty_factor
+
+            # 3. No-repeat n-gram filtering
+            if no_repeat_ngram_size > 0 and len(recent_tokens) >= no_repeat_ngram_size:
+                ngram = tuple(recent_tokens[-(no_repeat_ngram_size - 1):])
+                for i in range(len(recent_tokens) - no_repeat_ngram_size + 1):
+                    match = tuple(recent_tokens[i:i + no_repeat_ngram_size - 1])
+                    if match == ngram:
+                        banned_token = recent_tokens[i + no_repeat_ngram_size - 1]
+                        logits[0, banned_token] = -float("Inf")
+
+            # 4. Top-k and top-p filtering
             logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-            logits = repetition_penalty(logits, past_tokens, penalty=repetition_penalty_factor)
-            logits = no_repeat_ngram_filtering(logits, model_input, no_repeat_ngram_size)
 
-            if torch.isnan(logits).any() or torch.isinf(logits).any():
-                print("Invalid logits after filtering.")
-                return ""
+            # 5. Softmax and sampling
+            probs = torch.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
 
-            probabilities = torch.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probabilities, 1)
+            # 6. Append to input
             model_input = torch.cat([model_input, next_token], dim=1)
-            past_tokens.add(next_token.item())
+            recent_tokens.append(next_token.item())
 
     response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
     return response
+
 
 
 try:
