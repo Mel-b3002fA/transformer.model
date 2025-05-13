@@ -126,6 +126,6 @@ try:
             print("Goodbye!")
             break
         response = generate(prompt)
-        print(f"Bot: {response}")
+        print(f"Joi: {response}")
 except KeyboardInterrupt:
     print("\n👋 Goodbye!")
