@@ -13,7 +13,6 @@ block_size = 128
 checkpoint_path = 'out/ckpt.pt'
 meta_path = 'out/meta.pkl'
 
-# Load meta information (optional check)
 with open(meta_path, 'rb') as f:
     meta = pickle.load(f)
 
