@@ -88,15 +88,25 @@ if os.path.exists(ckpt_path):
         start_iter = len(losses)
 
 
-for iter in range(start_iter, max_iters):
-    model.train()
-    xb, yb = get_batch('train')
-    logits, loss = model(xb, yb)
+accum_steps = 8  # effective batch size = 4 * 8 = 32
+loss = 0
 
-    optimizer.zero_grad()
-    loss.backward()
+for iter in range(max_iters):
+    for _ in range(accum_steps):
+        xb, yb = get_batch(...)  # your batch loader
+        logits, curr_loss = model(xb, yb)
+        curr_loss = curr_loss / accum_steps  # scale loss
+        curr_loss.backward()
+        loss += curr_loss.item()
+    
     optimizer.step()
-    losses.append(loss.item())
+    optimizer.zero_grad()
+
+    # Optional: Logging
+    if iter % 100 == 0:
+        print(f"iter {iter}: loss {loss:.4f}")
+    loss = 0
+
 
     if iter % eval_interval == 0:
         print(f"🧪 step {iter}: train loss = {loss.item():.4f}")
