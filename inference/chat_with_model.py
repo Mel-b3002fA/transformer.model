@@ -22,7 +22,6 @@ tokenizer = AutoTokenizer.from_pretrained("gpt2")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-# Validate vocab match
 assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
 
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
