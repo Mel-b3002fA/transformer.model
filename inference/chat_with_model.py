@@ -17,7 +17,6 @@ meta_path = 'out/meta.pkl'
 with open(meta_path, 'rb') as f:
     meta = pickle.load(f)
 
-# Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
