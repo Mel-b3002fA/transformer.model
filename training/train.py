@@ -44,7 +44,7 @@ def tokenize_text(example):
     return torch.tensor(ids, dtype=torch.long)
 
 tokenized_data = []
-max_samples = 10_000
+max_samples = 100_000
 for idx, example in enumerate(dataset):
     try:
         ids = tokenize_text(example)
@@ -88,12 +88,12 @@ if os.path.exists(ckpt_path):
         start_iter = len(losses)
 
 
-accum_steps = 8  # effective batch size = 4 * 8 = 32
+accum_steps = 8  
 loss = 0
 
 for iter in range(max_iters):
     for _ in range(accum_steps):
-        xb, yb = get_batch(...)  # your batch loader
+        xb, yb = get_batch(...) 
         logits, curr_loss = model(xb, yb)
         curr_loss = curr_loss / accum_steps  # scale loss
         curr_loss.backward()
