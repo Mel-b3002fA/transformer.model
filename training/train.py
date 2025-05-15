@@ -172,18 +172,16 @@ from model import GPT, GPTConfig
 
 # Hyperparameters
 batch_size = 4
-block_size = 256  # Increased to better fit prompt-response pairs
+block_size = 128  # Increased to better fit prompt-response pairs
 max_iters = 10_000
 learning_rate = 1e-4
 eval_interval = 500
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-# Save meta.pkl
 os.makedirs('out', exist_ok=True)
 vocab = tokenizer.get_vocab()
 stoi = vocab
@@ -192,14 +190,12 @@ with open('out/meta.pkl', 'wb') as f:
     pickle.dump({'vocab_size': tokenizer.vocab_size, 'stoi': stoi, 'itos': itos}, f)
 print("✅ meta.pkl successfully saved.")
 
-# Load Alpaca-style instruction dataset
 dataset = load_dataset("tatsu-lab/alpaca", split="train")
 
 def format_instruction(example):
     text = f"### Instruction:\n{example['instruction']}\n\n### Response:\n{example['output']}"
     return {'text': text}
 
-# Format and tokenize
 formatted_dataset = dataset.map(format_instruction)
 
 def tokenize_text(example):
@@ -211,7 +207,6 @@ def tokenize_text(example):
 tokenized_dataset = formatted_dataset.map(tokenize_text)
 tokenized_data = list(tokenized_dataset['input_ids'])
 
-# Train/val split
 split_idx = int(0.9 * len(tokenized_data))
 train_data = tokenized_data[:split_idx]
 val_data = tokenized_data[split_idx:]
