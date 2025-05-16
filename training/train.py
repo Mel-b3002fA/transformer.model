@@ -156,8 +156,6 @@ plt.show()
 
 
 
-
-
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -202,10 +200,10 @@ def tokenize_text(example):
     ids = tokenizer.encode(example['text'], truncation=True, max_length=block_size)
     if len(ids) < block_size:
         ids += [tokenizer.pad_token_id] * (block_size - len(ids))
-    return {'input_ids': torch.tensor(ids, dtype=torch.long)}
+    return {'input_ids': ids}  # leave as list for now
 
 tokenized_dataset = formatted_dataset.map(tokenize_text)
-tokenized_data = list(tokenized_dataset['input_ids'])
+tokenized_data = [torch.tensor(x, dtype=torch.long) for x in tokenized_dataset['input_ids']]
 
 split_idx = int(0.9 * len(tokenized_data))
 train_data = tokenized_data[:split_idx]
@@ -220,11 +218,9 @@ def get_batch(split):
     y = x.clone()
     return x.to(device), y.to(device)
 
-# Model setup
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-# Load checkpoint if exists
 losses = []
 start_iter = 0
 best_val_loss = float('inf')
@@ -240,7 +236,6 @@ if os.path.exists(ckpt_path):
 
 accum_steps = 8
 
-# Training loop
 for iter in range(start_iter, max_iters):
     model.train()
     optimizer.zero_grad()
@@ -265,7 +260,6 @@ for iter in range(start_iter, max_iters):
             _, val_loss = model(xb_val, yb_val)
         print(f"✅ step {iter}: val loss = {val_loss.item():.4f}")
 
-        # Decode sample
         sample_ids = xb_val[0].tolist()
         decoded = tokenizer.decode(sample_ids, skip_special_tokens=True)
         print("🧠 Sample:", decoded.strip().replace("Ġ", ""))
@@ -278,16 +272,14 @@ for iter in range(start_iter, max_iters):
             torch.save(model.state_dict(), "out/best_model.pt")
             print("🌟 Best model saved at out/best_model.pt")
 
-# Save final model
 torch.save(model.state_dict(), ckpt_path)
 print("✅ Final model checkpoint saved at", ckpt_path)
 
-# Save loss history
+
 with open("out/losses.json", "w") as f:
     json.dump(losses, f)
 print("✅ Losses saved to out/losses.json")
 
-# Plot
 plt.plot(losses)
 plt.xlabel('Iterations')
 plt.ylabel('Loss')
