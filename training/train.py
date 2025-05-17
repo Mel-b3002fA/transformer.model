@@ -156,7 +156,7 @@ plt.show()
 
 
 
-import sys
+""" import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -315,6 +315,186 @@ for iter in range(start_iter, max_iters):
         # Print state_dict keys before saving
         state_dict_keys = list(model.state_dict().keys())
         logger.info(f"State dict keys to save: {state_dict_keys} (total {len(state_dict_keys)} keys)")
+
+        # Save checkpoint
+        torch.save(model.state_dict(), ckpt_path)
+        logger.info(f"📦 Checkpoint saved at {ckpt_path}")
+
+        # Save best model if validation loss improves
+        if val_loss.item() < best_val_loss:
+            best_val_loss = val_loss.item()
+            torch.save(model.state_dict(), best_model_path)
+            logger.info(f"🌟 Best model saved at {best_model_path}")
+
+# Save final checkpoint
+torch.save(model.state_dict(), ckpt_path)
+logger.info(f"✅ Final model checkpoint saved at {ckpt_path}")
+
+# Save losses
+with open("out/losses.json", "w") as f:
+    json.dump(losses, f)
+logger.info("✅ Losses saved to out/losses.json")
+
+# Plot losses
+plt.plot(losses)
+plt.xlabel('Iterations')
+plt.ylabel('Loss')
+plt.title('Finetuning Loss')
+plt.grid(True)
+plt.savefig("out/finetune_loss.png")
+plt.close()
+logger.info("✅ Loss plot saved to out/finetune_loss.png") """
+
+
+
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import torch
+import pickle
+import json
+import matplotlib.pyplot as plt
+from datasets import load_dataset
+from transformers import AutoTokenizer
+from model.gpt import GPT, GPTConfig
+import logging
+from datetime import datetime
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Hyperparameters
+batch_size = 4
+block_size = 128
+max_iters = 10_000
+learning_rate = 1e-4
+eval_interval = 500
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+gradient_clip = 1.0  # Gradient clipping
+accum_steps = 8
+
+# Initialize tokenizer
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
+# Create output directory
+os.makedirs('out', exist_ok=True)
+
+# Save vocabulary metadata
+vocab = tokenizer.get_vocab()
+stoi = vocab
+itos = {idx: token for token, idx in stoi.items()}
+with open('out/meta.pkl', 'wb') as f:
+    pickle.dump({'vocab_size': tokenizer.vocab_size, 'stoi': stoi, 'itos': itos}, f)
+logger.info("✅ meta.pkl successfully saved.")
+
+# Load and preprocess dataset
+dataset = load_dataset("tatsu-lab/alpaca", split="train")
+
+def format_instruction(example):
+    text = f"### Instruction:\n{example['instruction']}\n\n### Response:\n{example['output']}"
+    return {'text': text}
+
+formatted_dataset = dataset.map(format_instruction)
+
+def tokenize_text(example):
+    ids = tokenizer.encode(example['text'], truncation=True, max_length=block_size)
+    if len(ids) < block_size:
+        ids += [tokenizer.pad_token_id] * (block_size - len(ids))
+    return {'input_ids': ids}
+
+tokenized_dataset = formatted_dataset.map(tokenize_text)
+tokenized_data = [torch.tensor(x, dtype=torch.long) for x in tokenized_dataset['input_ids']]
+
+# Split dataset
+split_idx = int(0.9 * len(tokenized_data))
+train_data = tokenized_data[:split_idx]
+val_data = tokenized_data[split_idx:]
+logger.info(f"✅ Loaded {len(train_data)} training and {len(val_data)} validation samples.")
+
+# Log sample data for debugging
+sample_data = tokenized_data[0][:20]  # First 20 tokens of first sample
+logger.info(f"Sample tokenized data: {sample_data.tolist()}")
+logger.info(f"Sample decoded: {tokenizer.decode(sample_data, skip_special_tokens=True)}")
+
+# Batch function
+def get_batch(split):
+    data_split = train_data if split == 'train' else val_data
+    ix = torch.randint(len(data_split), (batch_size,))
+    x = torch.stack([data_split[i] for i in ix])
+    y = x.clone()
+    return x.to(device), y.to(device)
+
+# Initialize model
+config = GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size, n_layer=4, n_head=4, n_embd=128)
+model = GPT(config).to(device)
+
+# Weight initialization is handled in GPT.__init__
+logger.info("✅ Model weights initialized within GPT class.")
+
+# Log model configuration
+logger.info(f"Model config: vocab_size={config.vocab_size}, block_size={config.block_size}, "
+            f"n_layer={config.n_layer}, n_head={config.n_head}, n_embd={config.n_embd}")
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+losses = []
+start_iter = 0
+best_val_loss = float('inf')
+ckpt_path = f"out/ckpt_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
+best_model_path = "out/best_model.pt"
+
+# Load checkpoint if exists
+if os.path.exists("out/ckpt.pt"):
+    try:
+        model.load_state_dict(torch.load("out/ckpt.pt", map_location=device))
+        logger.info("✅ Resumed from checkpoint out/ckpt.pt")
+        if os.path.exists("out/losses.json"):
+            with open("out/losses.json", "r") as f:
+                losses = json.load(f)
+            start_iter = len(losses)
+    except Exception as e:
+        logger.warning(f"Failed to load checkpoint: {e}")
+
+# Training loop
+for iter in range(start_iter, max_iters):
+    model.train()
+    optimizer.zero_grad()
+    sum_loss = 0.0
+
+    for _ in range(accum_steps):
+        xb, yb = get_batch('train')
+        logits, curr_loss = model(xb, yb)
+        (curr_loss / accum_steps).backward()
+        sum_loss += curr_loss.item()
+
+    # Apply gradient clipping
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=gradient_clip)
+
+    optimizer.step()
+    losses.append(sum_loss)
+
+    if iter % 100 == 0:
+        logger.info(f"🔁 iter {iter}: train loss = {sum_loss:.4f}")
+
+    if iter % eval_interval == 0:
+        model.eval()
+        with torch.no_grad():
+            xb_val, yb_val = get_batch('val')
+            _, val_loss = model(xb_val, yb_val)
+        logger.info(f"✅ step {iter}: val loss = {val_loss.item():.4f}")
+
+        # Decode sample input
+        sample_ids = xb_val[0].tolist()
+        decoded = tokenizer.decode(sample_ids, skip_special_tokens=True)
+        logger.info(f"🧠 Sample: {decoded.strip().replace('Ġ', '')}")
+
+        # Print state_dict keys before saving
+        state_dict_keys = list(model.state_dict().keys())
+        logger.info(f"State dict keys to save: {state_dict_keys[:10]}... (total {len(state_dict_keys)} keys)")
 
         # Save checkpoint
         torch.save(model.state_dict(), ckpt_path)
