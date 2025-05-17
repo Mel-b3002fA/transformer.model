@@ -198,7 +198,6 @@ class ModelDiagnostics:
             outputs = self.model(**inputs)
             logits = outputs.logits if hasattr(outputs, 'logits') else outputs
 
-            # Backward pass
             loss = logits.sum()
             loss.backward()
 
