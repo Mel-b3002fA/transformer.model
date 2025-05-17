@@ -160,6 +160,7 @@ assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
 # Load fine-tuned model
 model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
 model.load_state_dict(torch.load(checkpoint_path, map_location=device), strict=False)
+print("✅ Model loaded from:", checkpoint_path)
 model.eval()
 print("✅ Model loaded and ready for chat.")
 
@@ -182,14 +183,6 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float('Inf')
             indices_to_remove = sorted_indices[batch_idx][sorted_indices_to_remove[batch_idx]]
             logits[batch_idx, indices_to_remove] = filter_value
 
-    return logits
-
-def repetition_penalty(logits, past_tokens, penalty=1.0):
-    if penalty == 1.0:
-        return logits
-    logits = logits.clone()
-    for token in past_tokens:
-        logits[0, token] /= penalty
     return logits
 
 def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
@@ -218,7 +211,6 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
                         logits[0, banned_token] = -float("Inf")
 
             logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-
             probs = torch.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
 
@@ -227,7 +219,6 @@ def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
 
     response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
     return response
-
 
 # Chat loop
 try:
