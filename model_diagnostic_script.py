@@ -192,7 +192,6 @@ class ModelDiagnostics:
             if input_text != decoded:
                 logger.warning("Tokenizer mismatch: Input does not match decoded output.")
 
-            # Tokenize input
             inputs = self.tokenizer(input_text, return_tensors='pt', truncation=True, max_length=self.model.max_seq_len)
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
