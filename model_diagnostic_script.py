@@ -278,7 +278,7 @@ class ModelDiagnostics:
 def main():
     try:
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")  # Replace with your tokenizer
+        tokenizer = AutoTokenizer.from_pretrained("gpt2") 
         model_path = "out/best_model.pt"
         model_class = CustomTransformer
         model_config = {
