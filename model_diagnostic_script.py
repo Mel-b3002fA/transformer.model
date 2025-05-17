@@ -186,7 +186,6 @@ class ModelDiagnostics:
         self.gradients.clear()
 
         try:
-            # Test tokenizer
             encoded = self.tokenizer.encode(input_text)
             decoded = self.tokenizer.decode(encoded)
             logger.info(f"Tokenizer test - Input: {input_text}, Encoded: {encoded}, Decoded: {decoded}")
