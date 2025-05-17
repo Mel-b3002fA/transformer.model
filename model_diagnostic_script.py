@@ -195,7 +195,6 @@ class ModelDiagnostics:
             inputs = self.tokenizer(input_text, return_tensors='pt', truncation=True, max_length=self.model.max_seq_len)
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-            # Forward pass with gradients
             outputs = self.model(**inputs)
             logits = outputs.logits if hasattr(outputs, 'logits') else outputs
 
