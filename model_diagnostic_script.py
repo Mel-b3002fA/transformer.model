@@ -201,7 +201,6 @@ class ModelDiagnostics:
             loss = logits.sum()
             loss.backward()
 
-            # Analyze activations and gradients
             act_analysis = self.analyze_activations(self.activations)
             grad_analysis = self.analyze_gradients(self.gradients)
             is_repetitive = self.check_repetitive_output(logits)
