@@ -284,7 +284,7 @@ def main():
         model_config = {
             'vocab_size': 50257,
             'n_embd': 128,
-            'n_layer': 1,  # Reduced due to missing block weights
+            'n_layer': 1,  
             'n_head': 8,
             'max_seq_len': 128
         }
