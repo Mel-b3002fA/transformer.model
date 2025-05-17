@@ -4,11 +4,9 @@ import numpy as np
 from collections import defaultdict
 import logging
 
-# Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Custom Transformer model to match state_dict
 class CustomTransformer(nn.Module):
     def __init__(self, vocab_size=50257, n_embd=128, n_layer=1, n_head=8, max_seq_len=128):
         super().__init__()
@@ -25,16 +23,16 @@ class CustomTransformer(nn.Module):
         B, T = input_ids.shape
         device = input_ids.device
 
-        tok_emb = self.token_embedding_table(input_ids)  # (B, T, n_embd)
-        pos = torch.arange(0, T, dtype=torch.long, device=device).unsqueeze(0)  # (1, T)
-        pos_emb = self.position_embedding_table(pos)  # (1, T, n_embd)
-        x = tok_emb + pos_emb  # (B, T, n_embd)
+        tok_emb = self.token_embedding_table(input_ids) 
+        pos = torch.arange(0, T, dtype=torch.long, device=device).unsqueeze(0)  
+        pos_emb = self.position_embedding_table(pos) 
+        x = tok_emb + pos_emb 
 
         for layer in self.layers:
             x = layer(x, attention_mask)
 
         x = self.ln_f(x)
-        logits = self.lm_head(x)  # (B, T, vocab_size)
+        logits = self.lm_head(x) 
         return logits
 
 class TransformerBlock(nn.Module):
