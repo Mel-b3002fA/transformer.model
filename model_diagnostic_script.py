@@ -205,7 +205,6 @@ class ModelDiagnostics:
             grad_analysis = self.analyze_gradients(self.gradients)
             is_repetitive = self.check_repetitive_output(logits)
 
-            # Print diagnostics
             print("\n=== Layer Diagnostics ===")
             for layer in act_analysis:
                 act = act_analysis[layer]
