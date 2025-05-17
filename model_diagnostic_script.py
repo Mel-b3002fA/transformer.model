@@ -103,7 +103,6 @@ class ModelDiagnostics:
             model = model_class(**model_config).to(self.device)
             state_dict = torch.load(self.model_path, map_location=self.device)
             
-            # Print state dict keys for debugging
             logger.info(f"State dict keys: {list(state_dict.keys())}")
             
             if isinstance(state_dict, dict):
