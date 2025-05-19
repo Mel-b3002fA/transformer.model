@@ -85,9 +85,10 @@ class TransformerBlock(nn.Module):
         x = x + self.sa(self.ln1(x))
         x = x + self.ffwd(self.ln2(x))
         return x
+    
 
 class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, n_embd, n_head):
+   def __init__(self, n_embd, n_head, dropout=0.1):
         super().__init__()
         assert n_embd % n_head == 0
         self.n_head = n_head
@@ -95,8 +96,9 @@ class MultiHeadSelfAttention(nn.Module):
         self.head_size = n_embd // n_head
         self.qkv = nn.Linear(n_embd, 3 * n_embd)
         self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+   def forward(self, x):
         B, T, C = x.shape
         q, k, v = self.qkv(x).split(self.n_embd, dim=2)
         q = q.view(B, T, self.n_head, self.head_size).transpose(1, 2)  # (B, n_head, T, head_size)
@@ -104,10 +106,15 @@ class MultiHeadSelfAttention(nn.Module):
         v = v.view(B, T, self.n_head, self.head_size).transpose(1, 2)
 
         att = (q @ k.transpose(-2, -1)) * (self.head_size ** -0.5)  # (B, n_head, T, T)
+        # Apply causal mask
+        mask = torch.tril(torch.ones(T, T, device=x.device)).view(1, 1, T, T)
+        att = att.masked_fill(mask == 0, float('-inf'))
         att = torch.softmax(att, dim=-1)
+        att = self.dropout(att)
         y = att @ v  # (B, n_head, T, head_size)
         y = y.transpose(1, 2).contiguous().view(B, T, C)  # (B, T, n_embd)
         return self.proj(y)
+    
 
 class FeedForward(nn.Module):
     def __init__(self, n_embd):
