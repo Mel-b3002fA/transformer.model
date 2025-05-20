@@ -448,10 +448,10 @@ ckpt_path = f"out/ckpt_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt"
 best_model_path = "out/best_model.pt"
 
 # Load checkpoint if exists
-if os.path.exists("out/ckpt.pt"):
+if os.path.exists("out/ckpt_20250520_064036.pt"):
     try:
-        model.load_state_dict(torch.load("out/ckpt.pt", map_location=device))
-        logger.info("✅ Resumed from checkpoint out/ckpt.pt")
+        model.load_state_dict(torch.load("out/ckpt_20250520_064036.pt", map_location=device))
+        logger.info("✅ Resumed from checkpoint out/ckpt_20250520_064036.pt")
         if os.path.exists("out/losses.json"):
             with open("out/losses.json", "r") as f:
                 losses = json.load(f)
