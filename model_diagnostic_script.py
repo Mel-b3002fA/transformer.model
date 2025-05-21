@@ -1,301 +1,216 @@
+import sys
+import os
 import torch
-import torch.nn as nn
-import numpy as np
-from collections import defaultdict
-import logging
+import pickle
+from transformers import AutoTokenizer
+import glob
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from model import GPT, GPTConfig
 
-class CustomTransformer(nn.Module):
-    def __init__(self, vocab_size=50257, n_embd=128, n_layer=1, n_head=8, max_seq_len=128):
-        super().__init__()
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(max_seq_len, n_embd)
-        self.layers = nn.ModuleList([
-            TransformerBlock(n_embd, n_head) for _ in range(n_layer)
-        ])
-        self.ln_f = nn.LayerNorm(n_embd)
-        self.lm_head = nn.Linear(n_embd, vocab_size)
-        self.max_seq_len = max_seq_len
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+block_size = 128
+checkpoint_dir = 'out'
+meta_path = 'out/meta.pkl'
 
-    def forward(self, input_ids, attention_mask=None):
-        B, T = input_ids.shape
-        device = input_ids.device
+# Load metadata (vocab size, etc.)
+with open(meta_path, 'rb') as f:
+    meta = pickle.load(f)
 
-        tok_emb = self.token_embedding_table(input_ids) 
-        pos = torch.arange(0, T, dtype=torch.long, device=device).unsqueeze(0)  
-        pos_emb = self.position_embedding_table(pos) 
-        x = tok_emb + pos_emb 
+# Load tokenizer
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
 
-        for layer in self.layers:
-            x = layer(x, attention_mask)
+assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
 
-        x = self.ln_f(x)
-        logits = self.lm_head(x) 
-        return logits
+# Dynamically load the latest checkpoint
+checkpoint_files = glob.glob(os.path.join(checkpoint_dir, 'ckpt_*.pt'))
+if not checkpoint_files:
+    raise FileNotFoundError("No checkpoint files found in 'out/' directory.")
+latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
+checkpoint_path = latest_checkpoint
+print(f"✅ Loading latest checkpoint from: {checkpoint_path}")
 
-class TransformerBlock(nn.Module):
-    def __init__(self, n_embd, n_head):
-        super().__init__()
-        self.sa = MultiHeadSelfAttention(n_embd, n_head)
-        self.ffwd = FeedForward(n_embd)
-        self.ln1 = nn.LayerNorm(n_embd)
-        self.ln2 = nn.LayerNorm(n_embd)
+# Load fine-tuned model with dynamic config from checkpoint
+checkpoint = torch.load(checkpoint_path, map_location=device)
 
-    def forward(self, x, attention_mask=None):
-        x = x + self.sa(self.ln1(x), attention_mask)
-        x = x + self.ffwd(self.ln2(x))
-        return x
+# Handle checkpoint loading
+if isinstance(checkpoint, dict):
+    if any('.weight' in key or '.bias' in key for key in checkpoint.keys()):
+        state_dict = checkpoint
+    else:
+        state_dict_keys = ['model_state_dict', 'state_dict', 'model']
+        state_dict = None
+        for key in state_dict_keys:
+            if key in checkpoint:
+                state_dict = checkpoint[key]
+                break
+        if state_dict is None:
+            raise KeyError(f"Checkpoint does not contain model weights. Available keys: {list(checkpoint.keys())}")
+else:
+    state_dict = checkpoint
 
-class MultiHeadSelfAttention(nn.Module):
-    def __init__(self, n_embd, n_head):
-        super().__init__()
-        assert n_embd % n_head == 0
-        self.n_head = n_head
-        self.n_embd = n_embd
-        self.head_size = n_embd // n_head
-        self.qkv = nn.Linear(n_embd, 3 * n_embd)
-        self.proj = nn.Linear(n_embd, n_embd)
+# Load model configuration and weights
+model_config = GPTConfig(**checkpoint.get('config', {'vocab_size': tokenizer.vocab_size, 'block_size': block_size}))
+model = GPT(model_config).to(device)
+model.load_state_dict(state_dict, strict=False)
+print("✅ Model loaded and ready for chat.")
+model.eval()
 
-    def forward(self, x, attention_mask=None):
-        B, T, C = x.shape
-        q, k, v = self.qkv(x).split(self.n_embd, dim=2)
-        q = q.view(B, T, self.n_head, self.head_size).transpose(1, 2)
-        k = k.view(B, T, self.n_head, self.head_size).transpose(1, 2)
-        v = v.view(B, T, self.n_head, self.head_size).transpose(1, 2)
+# Text generation utilities
+def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float('Inf')):
+    logits = logits.clone()
+    top_k = min(top_k, logits.size(-1))
+    if top_k > 0:
+        values, _ = torch.topk(logits, top_k)
+        min_values = values[:, -1].unsqueeze(1)
+        logits = torch.where(logits < min_values, filter_value, logits)
 
-        att = (q @ k.transpose(-2, -1)) * (self.head_size ** -0.5)
-        if attention_mask is not None:
-            att = att.masked_fill(attention_mask == 0, float('-inf'))
-        att = torch.softmax(att, dim=-1)
-        y = att @ v
-        y = y.transpose(1, 2).contiguous().view(B, T, C)
-        return self.proj(y)
+    if top_p < 1.0:
+        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
+        cumulative_probs = torch.softmax(sorted_logits, dim=-1).cumsum(dim=-1)
+        sorted_indices_to_remove = cumulative_probs > top_p
+        sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
+        sorted_indices_to_remove[:, 0] = 0
+        for batch_idx in range(logits.size(0)):
+            indices_to_remove = sorted_indices[batch_idx][sorted_indices_to_remove[batch_idx]]
+            logits[batch_idx, indices_to_remove] = filter_value
 
-class FeedForward(nn.Module):
-    def __init__(self, n_embd):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
-            nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd),
+    return logits
+
+def generate(prompt, max_new_tokens=100, temperature=0.5, top_k=30, top_p=0.85,
+             repetition_penalty_factor=1.2, no_repeat_ngram_size=5, debug=False, num_beams=3):
+    temperature = max(temperature, 1e-5)
+    model_input = tokenizer(prompt, return_tensors='pt').input_ids.to(device)
+    batch_size = model_input.size(0)
+    vocab_size = tokenizer.vocab_size
+
+    # Initialize beams: (batch_idx, sequence, score)
+    beams = [(0, model_input[0].clone(), 0.0)]
+    finished_beams = []
+
+    with torch.no_grad():
+        for _ in range(max_new_tokens):
+            new_beams = []
+            for batch_idx, sequence, score in beams:
+                # Check for n-gram repeats
+                recent_tokens = sequence[-no_repeat_ngram_size+1:].tolist() if len(sequence) >= no_repeat_ngram_size else []
+                input_crop = sequence.unsqueeze(0)[:, -block_size:]
+                logits, _ = model(input_crop)
+                if debug:
+                    print(f"Logits shape: {logits.shape}")
+                logits = logits[:, -1, :]
+
+                logits = logits / temperature
+
+                # Apply repetition penalty
+                for token in set(sequence.tolist()):
+                    logits[0, token] /= repetition_penalty_factor
+
+                # Apply n-gram blocking
+                if no_repeat_ngram_size > 0 and len(recent_tokens) >= no_repeat_ngram_size - 1:
+                    ngram = tuple(recent_tokens)
+                    for i in range(len(sequence) - no_repeat_ngram_size + 1):
+                        match = tuple(sequence[i:i + no_repeat_ngram_size - 1].tolist())
+                        if match == ngram:
+                            banned_token = sequence[i + no_repeat_ngram_size - 1].item()
+                            logits[0, banned_token] = -float("Inf")
+
+                logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+                if debug:
+                    probs = torch.softmax(logits, dim=-1)
+                    top_probs, top_indices = torch.topk(probs, 5)
+                    print(f"Top 5 token probs: {top_probs[0].tolist()}")
+                    print(f"Top 5 token IDs: {top_indices[0].tolist()}")
+
+                probs = torch.softmax(logits, dim=-1)
+                top_probs, top_indices = torch.topk(probs, num_beams, dim=-1)
+
+                for prob, token in zip(top_probs[0], top_indices[0]):
+                    new_sequence = torch.cat([sequence, token.unsqueeze(0)], dim=0)
+                    new_score = score + torch.log(prob).item()
+                    new_beams.append((batch_idx, new_sequence, new_score))
+
+            # Sort beams by score and keep top num_beams
+            new_beams.sort(key=lambda x: x[2], reverse=True)
+            beams = new_beams[:num_beams]
+
+            # Check for finished sequences (optional: implement stopping criteria)
+            # For simplicity, continue until max_new_tokens
+
+        # Select the best beam
+        best_beam = max(beams, key=lambda x: x[2])
+        model_input = best_beam[1].unsqueeze(0)
+
+    response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
+    return response
+
+# Chat loop with history and parameter tuning
+history = []
+debug_mode = False
+gen_params = {
+    'temperature': 0.0,
+    'top_k': 10,
+    'top_p': 0.7,
+    'repetition_penalty_factor': 10.0
+}
+
+try:
+    print("Commands: 'exit/quit/bye' to quit, 'set param=value' to tune (e.g., 'set temp=0.7 k=40'), 'debug on/off' to toggle debug, 'history' to show past exchanges")
+    while True:
+        prompt = input("You: ").strip().lower()
+
+        # Handle commands
+        if prompt in ['exit', 'quit', 'bye']:
+            print("Goodbye!")
+            break
+        elif prompt == 'history':
+            print("\n--- Chat History ---")
+            for i, (p, r) in enumerate(history[-5:], 1):
+                print(f"{i}. You: {p}")
+                print(f"   Joi: {r}")
+            continue
+        elif prompt.startswith('debug'):
+            debug_mode = 'on' in prompt
+            print(f"Debug mode {'enabled' if debug_mode else 'disabled'}")
+            continue
+        elif prompt.startswith('set'):
+            parts = prompt.split()
+            for part in parts[1:]:
+                if '=' in part:
+                    key, value = part.split('=')
+                    try:
+                        value = float(value)
+                        if key in ['temp', 'temperature']:
+                            gen_params['temperature'] = value
+                        elif key in ['k', 'top_k']:
+                            gen_params['top_k'] = int(value)
+                        elif key in ['p', 'top_p']:
+                            gen_params['top_p'] = value
+                        elif key in ['rep', 'repetition_penalty_factor']:
+                            gen_params['repetition_penalty_factor'] = value
+                    except ValueError:
+                        print(f"Invalid value for {key}: {value}")
+            print(f"Current parameters: {gen_params}")
+            continue
+
+        # Generate response
+        response = generate(
+            prompt,
+            max_new_tokens=100,
+            temperature=gen_params['temperature'],
+            top_k=gen_params['top_k'],
+            top_p=gen_params['top_p'],
+            repetition_penalty_factor=gen_params['repetition_penalty_factor'],
+            no_repeat_ngram_size=5,
+            debug=debug_mode,
+            num_beams=3
         )
+        print(f"Joi: {response}")
 
-    def forward(self, x):
-        return self.net(x)
+        # Store in history
+        history.append((prompt, response))
 
-class ModelDiagnostics:
-    def __init__(self, model_path, tokenizer, model_class=CustomTransformer, model_config=None, device='cuda' if torch.cuda.is_available() else 'cpu'):
-        self.device = device
-        self.tokenizer = tokenizer
-        self.model_path = model_path
-        self.model = self._load_model(model_class, model_config)
-        self.model.eval()
-        self.hooks = []
-        self.activations = defaultdict(list)
-        self.gradients = defaultdict(list)
-
-    def _load_model(self, model_class, model_config):
-        """Load model architecture and weights."""
-        try:
-            model_config = model_config or {'vocab_size': self.tokenizer.vocab_size}
-            model = model_class(**model_config).to(self.device)
-            state_dict = torch.load(self.model_path, map_location=self.device)
-            
-            logger.info(f"State dict keys: {list(state_dict.keys())}")
-            
-            if isinstance(state_dict, dict):
-                try:
-                    model.load_state_dict(state_dict, strict=True)
-                    logger.info(f"Loaded state dict from {self.model_path}")
-                except RuntimeError as e:
-                    logger.warning(f"State dict mismatch: {str(e)}")
-                    model.load_state_dict(state_dict, strict=False)
-                    logger.info("Loaded state dict with strict=False, some keys may be ignored")
-                    if not any('layer' in k or 'block' in k for k in state_dict.keys()):
-                        logger.warning("CRITICAL: No Transformer block keys found in state dict. Model is likely incomplete and may produce nonsense output.")
-            else:
-                logger.error("Expected state dict, but loaded object is not a dict")
-                raise ValueError("Invalid model file format")
-            return model
-        except Exception as e:
-            logger.error(f"Failed to load model: {str(e)}")
-            raise
-
-    def register_hooks(self):
-        """Register hooks to capture activations and gradients for each layer."""
-        for name, module in self.model.named_modules():
-            if isinstance(module, (nn.Linear, nn.LayerNorm, nn.Embedding)):
-                self.hooks.append(module.register_forward_hook(self._forward_hook(name)))
-                self.hooks.append(module.register_backward_hook(self._backward_hook(name)))
-        logger.info(f"Registered hooks for {len(self.hooks)//2} layers")
-
-    def _forward_hook(self, name):
-        def hook(module, input, output):
-            self.activations[name].append(output.detach().cpu().numpy())
-        return hook
-
-    def _backward_hook(self, name):
-        def hook(module, grad_input, grad_output):
-            if grad_output[0] is not None:
-                self.gradients[name].append(grad_output[0].detach().cpu().numpy())
-        return hook
-
-    def analyze_activations(self, activations):
-        """Analyze activations for anomalies."""
-        results = {}
-        for layer, acts in activations.items():
-            act = acts[-1]
-            results[layer] = {
-                'mean': np.mean(act),
-                'std': np.std(act),
-                'min': np.min(act),
-                'max': np.max(act),
-                'has_nan': np.any(np.isnan(act)),
-                'has_inf': np.any(np.isinf(act))
-            }
-        return results
-
-    def analyze_gradients(self, gradients):
-        """Analyze gradients for anomalies."""
-        results = {}
-        for layer, grads in gradients.items():
-            if grads:
-                grad = grads[-1]
-                results[layer] = {
-                    'mean': np.mean(grad),
-                    'std': np.std(grad),
-                    'min': np.min(grad),
-                    'max': np.max(grad),
-                    'has_nan': np.any(np.isnan(grad)),
-                    'has_inf': np.any(np.isinf(grad))
-                }
-        return results
-
-    def check_repetitive_output(self, logits):
-        """Check if output logits favor repetitive tokens."""
-        top_k = torch.topk(logits, k=10, dim=-1).indices
-        unique_tokens = len(torch.unique(top_k))
-        return unique_tokens < 5
-
-    def run_diagnostics(self, input_text):
-        """Run diagnostics on the model for a given input."""
-        logger.info(f"Processing input: {input_text}")
-        self.activations.clear()
-        self.gradients.clear()
-
-        try:
-            encoded = self.tokenizer.encode(input_text)
-            decoded = self.tokenizer.decode(encoded)
-            logger.info(f"Tokenizer test - Input: {input_text}, Encoded: {encoded}, Decoded: {decoded}")
-            if input_text != decoded:
-                logger.warning("Tokenizer mismatch: Input does not match decoded output.")
-
-            inputs = self.tokenizer(input_text, return_tensors='pt', truncation=True, max_length=self.model.max_seq_len)
-            inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-            outputs = self.model(**inputs)
-            logits = outputs.logits if hasattr(outputs, 'logits') else outputs
-
-            loss = logits.sum()
-            loss.backward()
-
-            act_analysis = self.analyze_activations(self.activations)
-            grad_analysis = self.analyze_gradients(self.gradients)
-            is_repetitive = self.check_repetitive_output(logits)
-
-            print("\n=== Layer Diagnostics ===")
-            for layer in act_analysis:
-                act = act_analysis[layer]
-                grad = grad_analysis.get(layer, {})
-                print(f"\nLayer: {layer}")
-                print(f"Activations: Mean={act['mean']:.4f}, Std={act['std']:.4f}, Min={act['min']:.4f}, Max={act['max']:.4f}")
-                print(f"Has NaN: {act['has_nan']}, Has Inf: {act['has_inf']}")
-                if grad:
-                    print(f"Gradients: Mean={grad['mean']:.4f}, Std={grad['std']:.4f}, Min={grad['min']:.4f}, Max={grad['max']:.4f}")
-                    print(f"Has NaN: {grad['has_nan']}, Has Inf: {grad['has_inf']}")
-                if act['has_nan'] or act['has_inf']:
-                    print("⚠️ Issue: NaN or Inf in activations")
-                if grad.get('has_nan', False) or grad.get('has_inf', False):
-                    print("⚠️ Issue: NaN or Inf in gradients")
-                if act['std'] < 0.01:
-                    print("⚠️ Issue: Low activation variance (possible vanishing features)")
-                if act['std'] > 10.0:
-                    print("⚠️ Issue: High activation variance (possible instability)")
-                if grad.get('std', 0) < 0.0001:
-                    print("⚠️ Issue: Vanishing gradients")
-                if grad.get('std', 0) > 100.0:
-                    print("⚠️ Issue: Exploding gradients")
-
-            print(f"\nOutput Repetitiveness: {'High' if is_repetitive else 'Normal'}")
-            if is_repetitive:
-                print("⚠️ Issue: Output logits favor repetitive tokens")
-
-            output_ids = torch.argmax(logits, dim=-1)
-            decoded_output = self.tokenizer.batch_decode(output_ids, skip_special_tokens=True)
-            print(f"\nGenerated Output: {decoded_output}")
-
-            print("\n=== Diagnostic Summary ===")
-            if any(act['has_nan'] or act['has_inf'] for act in act_analysis.values()):
-                print("Critical: NaN/Inf in activations. Check initialization or numerical stability.")
-            if any(grad.get('has_nan', False) or grad.get('has_inf', False) for grad in grad_analysis.values()):
-                print("Critical: NaN/Inf in gradients. Check learning rate or optimizer.")
-            if any(act['std'] < 0.01 for act in act_analysis.values()):
-                print("Warning: Low activation variance. Model may have collapsed features.")
-            if any(act['std'] > 10.0 for act in act_analysis.values()):
-                print("Warning: High activation variance. Model may be unstable.")
-            if any(grad.get('std', 0) < 0.0001 for grad in grad_analysis.values()):
-                print("Warning: Vanishing gradients. Check model depth or initialization.")
-            if any(grad.get('std', 0) > 100.0 for grad in grad_analysis.values()):
-                print("Warning: Exploding gradients. Reduce learning rate or use gradient clipping.")
-            if is_repetitive:
-                print("Warning: Repetitive output. Check training data diversity or temperature sampling.")
-            print("Critical: Incomplete model detected. Missing Transformer block weights, likely causing nonsense output.")
-
-            print("\n=== Next Steps ===")
-            print("1. Check training script to ensure all model parameters are saved (e.g., torch.save(model.state_dict(), ...)).")
-            print("2. Verify tokenizer vocabulary and test encoding/decoding for consistency.")
-            print("3. Inspect training data for repetitive patterns or low diversity.")
-            print("4. Check model initialization (e.g., Xavier or He initialization).")
-            print("5. Review learning rate schedule and optimizer settings.")
-            print("6. Consider retraining with proper model saving.")
-            print("7. Share model class definition and training script for precise architecture alignment.")
-
-        except Exception as e:
-            logger.error(f"Error during diagnostics: {str(e)}")
-            raise
-
-    def cleanup(self):
-        """Remove hooks to free memory."""
-        for hook in self.hooks:
-            hook.remove()
-        self.hooks.clear()
-        self.activations.clear()
-        self.gradients.clear()
-        logger.info("Cleaned up hooks and buffers")
-
-def main():
-    try:
-        from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained("gpt2") 
-        model_path = "out/best_model.pt"
-        model_class = CustomTransformer
-        model_config = {
-            'vocab_size': 50257,
-            'n_embd': 128,
-            'n_layer': 1,  
-            'n_head': 8,
-            'max_seq_len': 128
-        }
-        diagnostics = ModelDiagnostics(model_path, tokenizer, model_class, model_config)
-        diagnostics.register_hooks()
-        input_text = "hi"
-        diagnostics.run_diagnostics(input_text)
-        diagnostics.cleanup()
-    except Exception as e:
-        logger.error(f"Main execution failed: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    main()
+except KeyboardInterrupt:
+    print("\n👋 Goodbye!")

@@ -1,233 +1,191 @@
-""" import sys
-import os
-import torch
-import pickle
-from transformers import AutoTokenizer
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from model import GPT, GPTConfig
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-block_size = 128
-checkpoint_path = 'out/ckpt.pt'
-meta_path = 'out/meta.pkl'
-
-with open(meta_path, 'rb') as f:
-    meta = pickle.load(f)
-
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-
-assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
-
-model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
-model.load_state_dict(torch.load(checkpoint_path, map_location=device), strict=False)
-model.eval()
-print("✅ Model loaded and ready for chat.")
-
-
-def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float('Inf')):
-    logits = logits.clone()
-    top_k = min(top_k, logits.size(-1))
-    if top_k > 0:
-        values, _ = torch.topk(logits, top_k)
-        min_values = values[:, -1].unsqueeze(1)
-        logits = torch.where(logits < min_values, filter_value, logits)
-
-    if top_p < 1.0:
-        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-        cumulative_probs = torch.softmax(sorted_logits, dim=-1).cumsum(dim=-1)
-        sorted_indices_to_remove = cumulative_probs > top_p
-        sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
-        sorted_indices_to_remove[:, 0] = 0
-        for batch_idx in range(logits.size(0)):
-            indices_to_remove = sorted_indices[batch_idx][sorted_indices_to_remove[batch_idx]]
-            logits[batch_idx, indices_to_remove] = filter_value
-
-    return logits
-
-def repetition_penalty(logits, past_tokens, penalty=1.0):
-    if penalty == 1.0:
-        return logits
-    logits = logits.clone()
-    for token in past_tokens:
-        logits[0, token] /= penalty
-    return logits
-
-def no_repeat_ngram_filtering(logits, model_input, no_repeat_ngram_size=0):
-    if no_repeat_ngram_size < 1:
-        return logits
-    logits = logits.clone()
-    input_ids = model_input[0].tolist()
-    if len(input_ids) < no_repeat_ngram_size:
-        return logits
-
-    ngrams = {}
-    for i in range(len(input_ids) - no_repeat_ngram_size + 1):
-        ngram = tuple(input_ids[i:i + no_repeat_ngram_size - 1])
-        next_token = input_ids[i + no_repeat_ngram_size - 1]
-        if ngram not in ngrams:
-            ngrams[ngram] = []
-        ngrams[ngram].append(next_token)
-
-    current_ngram = tuple(input_ids[-(no_repeat_ngram_size - 1):])
-    if current_ngram in ngrams:
-        banned_tokens = ngrams[current_ngram]
-        for token in banned_tokens:
-            logits[0, token] = -float('Inf')
-    return logits
-
-def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
-             repetition_penalty_factor=1.2, no_repeat_ngram_size=3):
-    temperature = max(temperature, 1e-5)
-    model_input = tokenizer(prompt, return_tensors='pt').input_ids.to(device)
-    recent_tokens = model_input[0].tolist()
-
-    with torch.no_grad():
-        for _ in range(max_new_tokens):
-            input_crop = model_input[:, -block_size:]
-            logits, _ = model(input_crop)
-            logits = logits[:, -1, :]  
-
-
-            logits = logits / temperature
-
-            for token in set(recent_tokens):
-                logits[0, token] /= repetition_penalty_factor
-
-            if no_repeat_ngram_size > 0 and len(recent_tokens) >= no_repeat_ngram_size:
-                ngram = tuple(recent_tokens[-(no_repeat_ngram_size - 1):])
-                for i in range(len(recent_tokens) - no_repeat_ngram_size + 1):
-                    match = tuple(recent_tokens[i:i + no_repeat_ngram_size - 1])
-                    if match == ngram:
-                        banned_token = recent_tokens[i + no_repeat_ngram_size - 1]
-                        logits[0, banned_token] = -float("Inf")
-
-            logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-
-            probs = torch.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-
-            model_input = torch.cat([model_input, next_token], dim=1)
-            recent_tokens.append(next_token.item())
-
-    response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
-    return response
-
-
-
-try:
-    while True:
-        prompt = input("You: ")
-        if prompt.lower() in ['exit', 'quit', 'bye']:
-            print("Goodbye!")
-            break
-        response = generate(prompt)
-        print(f"Joi: {response}")
-except KeyboardInterrupt:
-    print("\n👋 Goodbye!")
- """
-
-
-
-
 import sys
 import os
 import torch
 import pickle
 from transformers import AutoTokenizer
+import glob
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, filename='joi_chat.log', filemode='a',
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Add parent directory to path for model import
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from model import GPT, GPTConfig
+# Debug: Print Python path to verify
+logging.info("Python path: %s", sys.path)
 
+# Attempt to import from model.gpt
+try:
+    from model.gpt import GPT, GPTConfig, top_k_top_p_filtering
+    logging.info("Successfully imported GPT, GPTConfig, top_k_top_p_filtering from model.gpt")
+except ImportError as e:
+    logging.error("Failed to import from model.gpt: %s", str(e))
+    print(f"Error: Could not import from model/gpt.py. Ensure model/gpt.py exists and is accessible. Error: {str(e)}")
+    raise
+
+# Device setup
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-block_size = 128
-checkpoint_path = 'out/best_model.pt'  # Fine-tuned model checkpoint
+block_size = 128  # Matches default in gpt.py; adjust if Joi uses different context length
+checkpoint_dir = 'out'
 meta_path = 'out/meta.pkl'
 
 # Load metadata (vocab size, etc.)
-with open(meta_path, 'rb') as f:
-    meta = pickle.load(f)
+try:
+    with open(meta_path, 'rb') as f:
+        meta = pickle.load(f)
+    logging.info("Metadata loaded from %s with vocab_size %d", meta_path, meta.get('vocab_size', 'unknown'))
+except FileNotFoundError:
+    logging.error("Metadata file not found at %s", meta_path)
+    raise FileNotFoundError(f"Metadata file not found at {meta_path}")
 
 # Load tokenizer
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
+try:
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    assert tokenizer.vocab_size == meta['vocab_size'], f"Tokenizer vocab size ({tokenizer.vocab_size}) does not match meta vocab size ({meta['vocab_size']})"
+    logging.info("Tokenizer loaded successfully with vocab size %d", tokenizer.vocab_size)
+except Exception as e:
+    logging.error("Failed to load tokenizer: %s", str(e))
+    raise
 
-assert tokenizer.vocab_size == meta['vocab_size'], "Tokenizer vocab mismatch"
+# Load latest checkpoint
+checkpoint_files = glob.glob(os.path.join(checkpoint_dir, 'ckpt_*.pt'))
+if not checkpoint_files:
+    logging.error("No checkpoint files found in %s", checkpoint_dir)
+    raise FileNotFoundError(f"No checkpoint files found in {checkpoint_dir}")
+latest_checkpoint = max(checkpoint_files, key=os.path.getmtime)
+checkpoint_path = latest_checkpoint
+logging.info("Loading latest checkpoint from: %s", checkpoint_path)
 
-# Load fine-tuned model
-model = GPT(GPTConfig(vocab_size=tokenizer.vocab_size, block_size=block_size)).to(device)
-model.load_state_dict(torch.load(checkpoint_path, map_location=device), strict=False)
-print("✅ Model loaded from:", checkpoint_path)
-model.eval()
-print("✅ Model loaded and ready for chat.")
+# Load checkpoint
+try:
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+except Exception as e:
+    logging.error("Failed to load checkpoint %s: %s", checkpoint_path, str(e))
+    raise
 
-# Text generation utilities
-def top_k_top_p_filtering(logits, top_k=0, top_p=1.0, filter_value=-float('Inf')):
-    logits = logits.clone()
-    top_k = min(top_k, logits.size(-1))
-    if top_k > 0:
-        values, _ = torch.topk(logits, top_k)
-        min_values = values[:, -1].unsqueeze(1)
-        logits = torch.where(logits < min_values, filter_value, logits)
+# Handle checkpoint loading
+if isinstance(checkpoint, dict):
+    state_dict_keys = ['model_state_dict', 'state_dict', 'model']
+    state_dict = None
+    for key in state_dict_keys:
+        if key in checkpoint:
+            state_dict = checkpoint[key]
+            break
+    if state_dict is None:
+        logging.error("Checkpoint does not contain model weights. Available keys: %s", list(checkpoint.keys()))
+        raise KeyError(f"Checkpoint does not contain model weights. Available keys: {list(checkpoint.keys())}")
+else:
+    state_dict = checkpoint
 
-    if top_p < 1.0:
-        sorted_logits, sorted_indices = torch.sort(logits, descending=True)
-        cumulative_probs = torch.softmax(sorted_logits, dim=-1).cumsum(dim=-1)
-        sorted_indices_to_remove = cumulative_probs > top_p
-        sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
-        sorted_indices_to_remove[:, 0] = 0
-        for batch_idx in range(logits.size(0)):
-            indices_to_remove = sorted_indices[batch_idx][sorted_indices_to_remove[batch_idx]]
-            logits[batch_idx, indices_to_remove] = filter_value
+# Load model configuration and weights
+try:
+    config_dict = checkpoint.get('config', {
+        'vocab_size': tokenizer.vocab_size,
+        'block_size': block_size,
+        'n_layer': 6,
+        'n_head': 6,
+        'n_embd': 256
+    })
+    model_config = GPTConfig(**config_dict)
+    model = GPT(model_config).to(device)
+    model.load_state_dict(state_dict, strict=False)
+    model.eval()
+    logging.info("Model loaded successfully with config: %s", config_dict)
+except Exception as e:
+    logging.error("Failed to load model: %s", str(e))
+    raise
 
-    return logits
+# Chat loop with history and parameter tuning
+history = []
+debug_mode = False
+gen_params = {
+    'temperature': 0.7,  # Adjusted for more diverse outputs
+    'top_k': 50,
+    'top_p': 0.9,
+    'repetition_penalty_factor': 1.2
+}
 
-def generate(prompt, max_new_tokens=100, temperature=1.0, top_k=50, top_p=0.95,
-             repetition_penalty_factor=1.2, no_repeat_ngram_size=3):
-    temperature = max(temperature, 1e-5)
-    model_input = tokenizer(prompt, return_tensors='pt').input_ids.to(device)
-    recent_tokens = model_input[0].tolist()
-
-    with torch.no_grad():
-        for _ in range(max_new_tokens):
-            input_crop = model_input[:, -block_size:]
-            logits, _ = model(input_crop)
-            logits = logits[:, -1, :]  # Get logits for last token
-
-            logits = logits / temperature
-
-            for token in set(recent_tokens):
-                logits[0, token] /= repetition_penalty_factor
-
-            if no_repeat_ngram_size > 0 and len(recent_tokens) >= no_repeat_ngram_size:
-                ngram = tuple(recent_tokens[-(no_repeat_ngram_size - 1):])
-                for i in range(len(recent_tokens) - no_repeat_ngram_size + 1):
-                    match = tuple(recent_tokens[i:i + no_repeat_ngram_size - 1])
-                    if match == ngram:
-                        banned_token = recent_tokens[i + no_repeat_ngram_size - 1]
-                        logits[0, banned_token] = -float("Inf")
-
-            logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
-            probs = torch.softmax(logits, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1)
-
-            model_input = torch.cat([model_input, next_token], dim=1)
-            recent_tokens.append(next_token.item())
-
-    response = tokenizer.decode(model_input[0][len(tokenizer.encode(prompt)):], skip_special_tokens=True)
-    return response
-
-# Chat loop
+print("Commands: 'exit/quit/bye' to quit, 'set param=value' to tune (e.g., 'set temp=0.7 k=50 p=0.9 rep=1.2'), 'debug on/off' to toggle debug, 'history' to show past exchanges")
 try:
     while True:
-        prompt = input("You: ")
+        prompt = input("You: ").strip()
+
+        # Handle commands
         if prompt.lower() in ['exit', 'quit', 'bye']:
             print("Goodbye!")
+            logging.info("Chat session terminated by user")
             break
-        response = generate(prompt)
-        print(f"Joi: {response}")
+        elif prompt.lower() == 'history':
+            print("\n--- Chat History ---")
+            for i, (p, r) in enumerate(history[-5:], 1):
+                print(f"{i}. You: {p}")
+                print(f"   Joi: {r}")
+            continue
+        elif prompt.lower().startswith('debug'):
+            debug_mode = 'on' in prompt.lower()
+            print(f"Debug mode {'enabled' if debug_mode else 'disabled'}")
+            logging.info("Debug mode set to %s", debug_mode)
+            continue
+        elif prompt.lower().startswith('set'):
+            parts = prompt.split()
+            for part in parts[1:]:
+                if '=' in part:
+                    key, value = part.split('=')
+                    try:
+                        value = float(value)
+                        if key in ['temp', 'temperature']:
+                            gen_params['temperature'] = value
+                        elif key in [' planting', 'top_k']:
+                            gen_params['top_k'] = int(value)
+                        elif key in ['p', 'top_p']:
+                            gen_params['top_p'] = value
+                        elif key in ['rep', 'repetition_penalty_factor']:
+                            gen_params['repetition_penalty_factor'] = value
+                        logging.info("Set parameter %s=%s", key, value)
+                    except ValueError:
+                        print(f"Invalid value for {key}: {value}")
+                        logging.warning("Invalid parameter value: %s=%s", key, value)
+            print(f"Current parameters: {gen_params}")
+            continue
+
+        # Build context with history
+        context = ""
+        for past_prompt, past_response in history[-5:]:  # Limit to last 5 exchanges
+            context += f"User: {past_prompt}\nJoi: {past_response}\n"
+        context += f"User: {prompt}\nJoi: "
+        input_ids = tokenizer(context, return_tensors='pt').input_ids.to(device)
+
+        # Generate response
+        try:
+            with torch.no_grad():
+                output_ids = model.generate(
+                    input_ids,
+                    max_new_tokens=100,
+                    temperature=gen_params['temperature'],
+                    top_k=gen_params['top_k'],
+                    top_p=gen_params['top_p'],
+                    repetition_penalty_factor=gen_params['repetition_penalty_factor'],
+                    no_repeat_ngram_size=5
+                )
+            response = tokenizer.decode(output_ids[0][len(input_ids[0]):], skip_special_tokens=True)
+            print(f"Joi: {response}")
+            logging.info("Generated response for prompt '%s': %s", prompt, response)
+
+            # Store in history
+            history.append((prompt, response))
+
+            # Debug output
+            if debug_mode:
+                print(f"Input IDs shape: {input_ids.shape}")
+                print(f"Output IDs shape: {output_ids.shape}")
+                logging.debug("Input IDs shape: %s, Output IDs shape: %s", input_ids.shape, output_ids.shape)
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            logging.error("Generation error: %s", str(e))
+
 except KeyboardInterrupt:
     print("\n👋 Goodbye!")
+    logging.info("Chat session interrupted by user")
